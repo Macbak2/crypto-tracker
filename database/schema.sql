@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     rate DECIMAL(20, 8) NOT NULL COMMENT 'Kurs jednostkowy',
     amount DECIMAL(20, 8) NOT NULL COMMENT 'Ilość kryptowaluty',
     value DECIMAL(20, 2) NOT NULL COMMENT 'Wartość w PLN',
+    notes TEXT NULL COMMENT 'Notatki użytkownika',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     INDEX idx_datetime (datetime),
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS operations (
     balance_available DECIMAL(20, 8) DEFAULT 0 COMMENT 'Saldo dostępne po operacji',
     balance_locked DECIMAL(20, 8) DEFAULT 0 COMMENT 'Saldo zablokowane po operacji',
     balance_total DECIMAL(20, 8) DEFAULT 0 COMMENT 'Saldo całkowite po operacji',
+    notes TEXT NULL COMMENT 'Notatki użytkownika',
     transaction_id VARCHAR(36) NULL COMMENT 'Powiązanie z transactions (jeśli możliwe)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
