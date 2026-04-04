@@ -1,0 +1,176 @@
+.transactions-page h2 {
+ font-size: 2rem;
+ margin-bottom: 2rem;
+ color: #333;
+}
+
+/* Filters */
+.filters {
+ background: white;
+ padding: 1.5rem;
+ border-radius: 12px;
+ margin-bottom: 2rem;
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+ display: flex;
+ gap: 1.5rem;
+ flex-wrap: wrap;
+}
+
+.filter-group {
+ display: flex;
+ flex-direction: column;
+ gap: 0.5rem;
+ flex: 1;
+ min-width: 150px;
+}
+
+.filter-group label {
+ font-weight: 600;
+ font-size: 0.9rem;
+ color: #666;
+}
+
+.filter-group select,
+.filter-group input {
+ padding: 0.6rem;
+ border: 1px solid #ddd;
+ border-radius: 6px;
+ font-size: 0.95rem;
+ transition: border-color 0.3s;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+ outline: none;
+ border-color: #667eea;
+}
+
+/* Table */
+.table-container {
+ background: white;
+ border-radius: 12px;
+ overflow: hidden;
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+ margin-bottom: 2rem;
+}
+
+.transactions-table {
+ width: 100%;
+ border-collapse: collapse;
+}
+
+.transactions-table th {
+ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+ color: white;
+ padding: 1rem;
+ text-align: left;
+ font-weight: 600;
+}
+
+.transactions-table td {
+ padding: 1rem;
+ border-bottom: 1px solid #f0f0f0;
+}
+
+.transactions-table tr:last-child td {
+ border-bottom: none;
+}
+
+.transactions-table tr:hover {
+ background: #f9f9f9;
+}
+
+.market-badge {
+ background: #e3f2fd;
+ color: #1976d2;
+ padding: 0.3rem 0.8rem;
+ border-radius: 6px;
+ font-weight: 600;
+ font-size: 0.9rem;
+}
+
+.type-badge {
+ padding: 0.3rem 0.8rem;
+ border-radius: 6px;
+ font-weight: 600;
+ font-size: 0.9rem;
+ display: inline-flex;
+ align-items: center;
+ gap: 0.3rem;
+}
+
+.type-badge.buy {
+ background: #e8f5e9;
+ color: #2e7d32;
+}
+
+.type-badge.sell {
+ background: #ffebee;
+ color: #c62828;
+}
+
+.order-badge {
+ background: #f5f5f5;
+ color: #666;
+ padding: 0.3rem 0.8rem;
+ border-radius: 6px;
+ font-size: 0.85rem;
+ text-transform: uppercase;
+}
+
+.number {
+ text-align: right;
+ font-family: 'Courier New', monospace;
+}
+
+.value {
+ font-weight: 600;
+}
+
+/* Pagination */
+.pagination {
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ background: white;
+ padding: 1rem 1.5rem;
+ border-radius: 12px;
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pagination-info {
+ color: #666;
+ font-size: 0.95rem;
+}
+
+.pagination-buttons {
+ display: flex;
+ align-items: center;
+ gap: 1rem;
+}
+
+.pagination-buttons button {
+ padding: 0.6rem 1.2rem;
+ border: 1px solid #ddd;
+ background: white;
+ border-radius: 6px;
+ cursor: pointer;
+ font-size: 0.9rem;
+ transition: all 0.3s;
+}
+
+.pagination-buttons button:hover:not(:disabled) {
+ background: #667eea;
+ color: white;
+ border-color: #667eea;
+}
+
+.pagination-buttons button:disabled {
+ opacity: 0.4;
+ cursor: not-allowed;
+}
+
+.page-info {
+ font-weight: 600;
+ color: #333;
+}
