@@ -4,8 +4,6 @@
 // Endpoint: GET /api/statistics.php
 // ================================================
 
-require_once '../config/database.php';
-
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
@@ -15,6 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
  http_response_code(200);
  exit();
 }
+
+require_once '../config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
  http_response_code(405);
@@ -30,7 +30,7 @@ $year = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
 try {
  // Podsumowanie transakcji per kryptowaluta
  $stmt = $db->prepare("
-        SELECT 
+        SELECT
             SUBSTRING_INDEX(market, '-', 1) as crypto,
             SUM(CASE WHEN type = 'buy' THEN amount ELSE 0 END) as total_bought,
             SUM(CASE WHEN type = 'sell' THEN amount ELSE 0 END) as total_sold,
@@ -47,21 +47,26 @@ try {
  $perCrypto = $stmt->fetchAll();
 
  // Prowizje per waluta
- $stmt = $db->prepare("
-        SELECT 
-            currency,
-            SUM(ABS(amount)) as total_fees
-        FROM operations
-        WHERE operation_type LIKE '%prowizji%'
-        AND YEAR(datetime) = ?
-        GROUP BY currency
-    ");
- $stmt->execute([$year]);
- $fees = $stmt->fetchAll();
+ $fees = [];
+ try {
+  $stmt = $db->prepare("
+            SELECT
+                currency,
+                SUM(ABS(amount)) as total_fees
+            FROM operations
+            WHERE operation_type LIKE '%prowizji%'
+            AND YEAR(datetime) = ?
+            GROUP BY currency
+        ");
+  $stmt->execute([$year]);
+  $fees = $stmt->fetchAll();
+ } catch (Exception $e) {
+  $fees = [];
+ }
 
  // Podsumowanie miesięczne
  $stmt = $db->prepare("
-        SELECT 
+        SELECT
             DATE_FORMAT(datetime, '%Y-%m') as month,
             SUM(CASE WHEN type = 'buy' THEN value ELSE 0 END) as spent,
             SUM(CASE WHEN type = 'sell' THEN value ELSE 0 END) as earned,
@@ -76,7 +81,7 @@ try {
 
  // Podsumowanie roczne
  $stmt = $db->prepare("
-        SELECT 
+        SELECT
             SUM(CASE WHEN type = 'buy' THEN value ELSE 0 END) as total_spent,
             SUM(CASE WHEN type = 'sell' THEN value ELSE 0 END) as total_earned,
             COUNT(*) as total_transactions
@@ -86,33 +91,37 @@ try {
  $stmt->execute([$year]);
  $yearly = $stmt->fetch();
 
- // Profit/Loss (uproszczony - do rozliczenia FIFO potrzeba bardziej zaawansowany algorytm)
- $profitLoss = $yearly['total_earned'] - $yearly['total_spent'];
+ $profitLoss = ($yearly['total_earned'] ?? 0) - ($yearly['total_spent'] ?? 0);
 
- // Historia importów
- $stmt = $db->prepare("
-        SELECT 
-            filename,
-            file_type,
-            records_count,
-            date_from,
-            date_to,
-            imported_at
-        FROM import_history
-        ORDER BY imported_at DESC
-        LIMIT 10
-    ");
- $stmt->execute();
- $importHistory = $stmt->fetchAll();
+ // Historia importów - POPRAWIONA nazwa kolumny: file_name zamiast filename
+ $importHistory = [];
+ try {
+  $stmt = $db->prepare("
+            SELECT
+                file_name as filename,
+                file_type,
+                records_count,
+                date_from,
+                date_to,
+                imported_at
+            FROM import_history
+            ORDER BY imported_at DESC
+            LIMIT 10
+        ");
+  $stmt->execute();
+  $importHistory = $stmt->fetchAll();
+ } catch (Exception $e) {
+  $importHistory = [];
+ }
 
  echo json_encode([
   'success' => true,
   'year' => $year,
   'summary' => [
-   'totalSpent' => round($yearly['total_spent'], 2),
-   'totalEarned' => round($yearly['total_earned'], 2),
+   'totalSpent' => round($yearly['total_spent'] ?? 0, 2),
+   'totalEarned' => round($yearly['total_earned'] ?? 0, 2),
    'profitLoss' => round($profitLoss, 2),
-   'totalTransactions' => (int)$yearly['total_transactions']
+   'totalTransactions' => (int)($yearly['total_transactions'] ?? 0)
   ],
   'perCrypto' => $perCrypto,
   'fees' => $fees,
