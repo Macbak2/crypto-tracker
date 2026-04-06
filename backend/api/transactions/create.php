@@ -1,32 +1,28 @@
 <?php
 
 /**
- * API Endpoint: Dodawanie nowej transakcji
+ * API Endpoint: Tworzenie nowej transakcji z obsługą prowizji
  * POST /api/transactions/create.php
  */
 
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+ http_response_code(200);
+ exit();
+}
 
 require_once '../../config/database.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
  $data = json_decode(file_get_contents("php://input"));
 
  if (!$data) {
   http_response_code(400);
-  echo json_encode([
-   'success' => false,
-   'message' => 'Nieprawidłowe dane wejściowe'
-  ]);
+  echo json_encode(['success' => false, 'message' => 'Nieprawidłowe dane']);
   exit;
  }
 
@@ -34,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $database = new Database();
   $db = $database->getConnection();
 
-  // Walidacja
+  // Walidacja wymaganych pól
   if (
    empty($data->market) || empty($data->datetime) || empty($data->type) ||
    empty($data->order_type) || empty($data->rate) || empty($data->amount) || empty($data->value)
@@ -42,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    throw new Exception('Wszystkie pola są wymagane');
   }
 
-  // Generuj UUID
+  // Generuj UUID dla transakcji
   $uuid = sprintf(
    '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
    mt_rand(0, 0xffff),
@@ -55,6 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    mt_rand(0, 0xffff)
   );
 
+  // Rozpocznij transakcję bazodanową
+  $db->beginTransaction();
+
+  // 1. Zapisz transakcję
   $stmt = $db->prepare("
             INSERT INTO transactions (id, market, datetime, type, order_type, rate, amount, value, notes)
             VALUES (:id, :market, :datetime, :type, :order_type, :rate, :amount, :value, :notes)
@@ -72,22 +72,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    ':notes' => $data->notes ?? null
   ]);
 
+  // 2. Jeśli jest prowizja, zapisz do operations
+  $feeAmount = isset($data->fee_amount) ? floatval($data->fee_amount) : 0;
+  $feeCurrency = isset($data->fee_currency) ? $data->fee_currency : null;
+
+  if ($feeAmount > 0 && $feeCurrency) {
+   $stmt = $db->prepare("
+                INSERT INTO operations (datetime, operation_type, amount, currency, transaction_id, notes)
+                VALUES (:datetime, :operation_type, :amount, :currency, :transaction_id, :notes)
+            ");
+
+   $stmt->execute([
+    ':datetime' => $data->datetime,
+    ':operation_type' => 'Pobranie prowizji za transakcję',
+    ':amount' => -abs($feeAmount), // Prowizja jako wartość ujemna
+    ':currency' => $feeCurrency,
+    ':transaction_id' => $uuid,
+    ':notes' => 'Prowizja dodana ręcznie'
+   ]);
+  }
+
+  // Zatwierdź transakcję
+  $db->commit();
+
   echo json_encode([
    'success' => true,
-   'message' => 'Transakcja została dodana',
-   'id' => $uuid
+   'message' => 'Transakcja została dodana' . ($feeAmount > 0 ? ' wraz z prowizją' : ''),
+   'id' => $uuid,
+   'fee_saved' => $feeAmount > 0
   ]);
  } catch (Exception $e) {
+  // Wycofaj transakcję w razie błędu
+  if (isset($db) && $db->inTransaction()) {
+   $db->rollBack();
+  }
+
   http_response_code(500);
-  echo json_encode([
-   'success' => false,
-   'message' => 'Błąd: ' . $e->getMessage()
-  ]);
+  echo json_encode(['success' => false, 'message' => 'Błąd: ' . $e->getMessage()]);
  }
 } else {
  http_response_code(405);
- echo json_encode([
-  'success' => false,
-  'message' => 'Metoda nie dozwolona'
- ]);
+ echo json_encode(['success' => false, 'message' => 'Metoda nie dozwolona']);
 }

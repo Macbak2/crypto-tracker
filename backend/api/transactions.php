@@ -1,7 +1,7 @@
 <?php
 
 /**
- * API Endpoint: Pobieranie transakcji
+ * API Endpoint: Pobieranie transakcji z prowizjami
  * GET /api/transactions.php
  */
 
@@ -62,6 +62,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $stmt->execute();
   $transactions = $stmt->fetchAll();
 
+  // Pobierz prowizje dla tych transakcji
+  if (!empty($transactions)) {
+   $transactionIds = array_column($transactions, 'id');
+   $placeholders = implode(',', array_fill(0, count($transactionIds), '?'));
+
+   $feesSql = "
+                SELECT
+                    transaction_id,
+                    amount,
+                    currency
+                FROM operations
+                WHERE transaction_id IN ($placeholders)
+                AND operation_type LIKE '%prowizji%'
+            ";
+
+   $feesStmt = $db->prepare($feesSql);
+   $feesStmt->execute($transactionIds);
+   $fees = $feesStmt->fetchAll();
+
+   // Mapuj prowizje do transakcji
+   $feesMap = [];
+   foreach ($fees as $fee) {
+    $txId = $fee['transaction_id'];
+    if (!isset($feesMap[$txId])) {
+     $feesMap[$txId] = [];
+    }
+    $feesMap[$txId][] = [
+     'amount' => abs(floatval($fee['amount'])),
+     'currency' => $fee['currency']
+    ];
+   }
+
+   // Dodaj prowizje do transakcji
+   foreach ($transactions as &$tx) {
+    $tx['fees'] = $feesMap[$tx['id']] ?? [];
+
+    // Oblicz łączną prowizję w PLN i crypto osobno
+    $tx['fee_pln'] = 0;
+    $tx['fee_crypto'] = 0;
+    $tx['fee_crypto_currency'] = null;
+
+    foreach ($tx['fees'] as $fee) {
+     if ($fee['currency'] === 'PLN') {
+      $tx['fee_pln'] += $fee['amount'];
+     } else {
+      $tx['fee_crypto'] += $fee['amount'];
+      $tx['fee_crypto_currency'] = $fee['currency'];
+     }
+    }
+   }
+   unset($tx); // Usuń referencję
+  }
+
   // Policz wszystkie (bez limitu)
   $countSql = "SELECT COUNT(*) as total FROM transactions WHERE 1=1";
   if ($market) $countSql .= " AND market = :market";
@@ -79,10 +132,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   echo json_encode([
    'success' => true,
    'transactions' => $transactions,
-   'total' => intval($total),
-   'limit' => $limit,
-   'offset' => $offset,
-   'pages' => ceil($total / $limit)
+   'pagination' => [
+    'total' => intval($total),
+    'limit' => $limit,
+    'offset' => $offset,
+    'pages' => ceil($total / $limit)
+   ]
   ]);
  } catch (Exception $e) {
   http_response_code(500);

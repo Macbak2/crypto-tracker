@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import './TransactionsPage.css';
 
 function TransactionsPage() {
@@ -20,7 +20,7 @@ function TransactionsPage() {
 
  // Modal state
  const [showModal, setShowModal] = useState(false);
- const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
+ const [modalMode, setModalMode] = useState('create');
  const [currentTransaction, setCurrentTransaction] = useState(null);
  const [formData, setFormData] = useState({
   market: '',
@@ -30,14 +30,12 @@ function TransactionsPage() {
   rate: '',
   amount: '',
   value: '',
+  fee_amount: '',
+  fee_currency: 'crypto',
   notes: ''
  });
 
- useEffect(() => {
-  loadTransactions();
- }, [filters, pagination.offset]);
-
- const loadTransactions = async () => {
+ const loadTransactions = useCallback(async () => {
   setLoading(true);
   try {
    const params = {
@@ -46,13 +44,12 @@ function TransactionsPage() {
     offset: pagination.offset
    };
 
-   const data = await api.getTransactions(params);
-
+   const data = await getTransactions(params);
    setTransactions(data.transactions || []); // Zabezpieczenie przed undefined
    setPagination(prev => ({
     ...prev,
-    total: data.total || 0,
-    pages: data.pages || 1
+    total: data.pagination?.total || 0,
+    pages: data.pagination?.pages || 1
    }));
   } catch (error) {
    console.error('Błąd podczas ładowania transakcji:', error);
@@ -60,7 +57,11 @@ function TransactionsPage() {
   } finally {
    setLoading(false);
   }
- };
+ }, [filters, pagination.limit, pagination.offset]);
+
+ useEffect(() => {
+  loadTransactions();
+ }, [loadTransactions]);
 
  const handleFilterChange = (e) => {
   const { name, value } = e.target;
@@ -89,6 +90,32 @@ function TransactionsPage() {
   }
  };
 
+ // Wyciągnij crypto z rynku (np. BTC-PLN -> BTC)
+ const getCryptoFromMarket = (market) => {
+  if (!market || !market.includes('-')) return 'CRYPTO';
+  return market.split('-')[0];
+ };
+
+ // Formatowanie prowizji do wyświetlenia
+ const formatFee = (tx) => {
+  const parts = [];
+
+  if (tx.fee_pln && tx.fee_pln > 0) {
+   parts.push(`${parseFloat(tx.fee_pln).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN`);
+  }
+
+  if (tx.fee_crypto && tx.fee_crypto > 0) {
+   parts.push(`${parseFloat(tx.fee_crypto).toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} ${tx.fee_crypto_currency || 'CRYPTO'}`);
+  }
+
+  return parts.length > 0 ? parts.join(' + ') : '-';
+ };
+
+ // Sprawdź czy transakcja ma prowizję
+ const hasFee = (tx) => {
+  return (tx.fee_pln && tx.fee_pln > 0) || (tx.fee_crypto && tx.fee_crypto > 0);
+ };
+
  // Modal functions
  const openCreateModal = () => {
   setModalMode('create');
@@ -100,6 +127,8 @@ function TransactionsPage() {
    rate: '',
    amount: '',
    value: '',
+   fee_amount: '',
+   fee_currency: 'crypto',
    notes: ''
   });
   setShowModal(true);
@@ -108,6 +137,19 @@ function TransactionsPage() {
  const openEditModal = (transaction) => {
   setModalMode('edit');
   setCurrentTransaction(transaction);
+
+  // Określ walutę prowizji na podstawie istniejących danych
+  let feeCurrency = 'crypto';
+  let feeAmount = '';
+
+  if (transaction.fee_pln && transaction.fee_pln > 0) {
+   feeCurrency = 'PLN';
+   feeAmount = transaction.fee_pln;
+  } else if (transaction.fee_crypto && transaction.fee_crypto > 0) {
+   feeCurrency = 'crypto';
+   feeAmount = transaction.fee_crypto;
+  }
+
   setFormData({
    market: transaction.market,
    datetime: transaction.datetime.replace(' ', 'T').slice(0, 16),
@@ -116,6 +158,8 @@ function TransactionsPage() {
    rate: transaction.rate,
    amount: transaction.amount,
    value: transaction.value,
+   fee_amount: feeAmount,
+   fee_currency: feeCurrency,
    notes: transaction.notes || ''
   });
   setShowModal(true);
@@ -145,6 +189,14 @@ function TransactionsPage() {
     }));
    }
   }
+
+  // Auto-switch fee currency based on transaction type
+  if (name === 'type') {
+   setFormData(prev => ({
+    ...prev,
+    fee_currency: value === 'buy' ? 'crypto' : 'PLN'
+   }));
+  }
  };
 
  const handleSubmit = async (e) => {
@@ -153,14 +205,18 @@ function TransactionsPage() {
   try {
    const dataToSend = {
     ...formData,
-    datetime: formData.datetime.replace('T', ' ') + ':00'
+    datetime: formData.datetime.replace('T', ' ') + ':00',
+    fee_amount: formData.fee_amount ? parseFloat(formData.fee_amount) : 0,
+    fee_currency: formData.fee_currency === 'crypto'
+     ? getCryptoFromMarket(formData.market)
+     : 'PLN'
    };
 
    if (modalMode === 'create') {
-    await api.createTransaction(dataToSend);
+    await createTransaction(dataToSend);
     alert('Transakcja została dodana!');
    } else {
-    await api.updateTransaction(currentTransaction.id, dataToSend);
+    await updateTransaction(currentTransaction.id, dataToSend);
     alert('Transakcja została zaktualizowana!');
    }
 
@@ -177,7 +233,7 @@ function TransactionsPage() {
   }
 
   try {
-   await api.deleteTransaction(id);
+   await deleteTransaction(id);
    alert('Transakcja została usunięta!');
    loadTransactions();
   } catch (error) {
@@ -211,6 +267,7 @@ function TransactionsPage() {
       <option value="LSK-PLN">LSK-PLN</option>
       <option value="DASH-PLN">DASH-PLN</option>
       <option value="GAME-PLN">GAME-PLN</option>
+      <option value="BTG-PLN">BTG-PLN</option>
      </select>
     </div>
 
@@ -255,14 +312,21 @@ function TransactionsPage() {
        <th>Kurs</th>
        <th>Ilość</th>
        <th>Wartość</th>
-       <th>Notatki</th>
+       <th>Prowizja</th>
+       <th title="Notatki">💬</th>
        <th>Akcje</th>
       </tr>
      </thead>
      <tbody>
       {transactions.map(tx => (
        <tr key={tx.id}>
-        <td>{new Date(tx.datetime).toLocaleString('pl-PL')}</td>
+        <td>{new Date(tx.datetime).toLocaleString('pl-PL', {
+         day: '2-digit',
+         month: '2-digit',
+         year: 'numeric',
+         hour: '2-digit',
+         minute: '2-digit'
+        })}</td>
         <td>
          <span className="market-badge">{tx.market}</span>
         </td>
@@ -277,7 +341,18 @@ function TransactionsPage() {
         <td className="number">{parseFloat(tx.rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })}</td>
         <td className="number">{parseFloat(tx.amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })}</td>
         <td className="number value">{parseFloat(tx.value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</td>
-        <td className="notes">{tx.notes || '-'}</td>
+        <td className={`number fee ${hasFee(tx) ? 'has-fee' : ''}`}>
+         {formatFee(tx)}
+        </td>
+        <td className="notes-cell">
+         {tx.notes ? (
+          <span className="notes-icon" title={tx.notes}>
+           💬
+          </span>
+         ) : (
+          <span className="no-notes">-</span>
+         )}
+        </td>
         <td className="actions">
          <button className="btn-edit" onClick={() => openEditModal(tx)} title="Edytuj">
           ✏️
@@ -301,7 +376,7 @@ function TransactionsPage() {
       ← Poprzednia
      </button>
      <span className="page-info">
-      Strona {Math.floor(pagination.offset / pagination.limit) + 1} / {pagination.pages}
+      Strona {Math.floor(pagination.offset / pagination.limit) + 1} / {Math.max(1, pagination.pages)}
      </span>
      <button onClick={nextPage} disabled={pagination.offset + pagination.limit >= pagination.total}>
       Następna →
@@ -355,7 +430,7 @@ function TransactionsPage() {
 
         <div className="form-group">
          <label>Rodzaj zlecenia *</label>
-         <select name="order_type" value={formData.order_type} onChange={handleFormChange} required>
+         <select name="order_type" value={formData.order_order} onChange={handleFormChange} required>
           <option value="maker">Maker</option>
           <option value="taker">Taker</option>
          </select>
@@ -403,13 +478,47 @@ function TransactionsPage() {
         </div>
        </div>
 
+       {/* Sekcja prowizji */}
+       <div className="form-section">
+        <h4>💰 Prowizja giełdowa</h4>
+        <div className="form-row">
+         <div className="form-group">
+          <label>Kwota prowizji</label>
+          <input
+           type="number"
+           step="0.00000001"
+           name="fee_amount"
+           value={formData.fee_amount}
+           onChange={handleFormChange}
+           placeholder="0.00"
+          />
+         </div>
+
+         <div className="form-group">
+          <label>Waluta prowizji</label>
+          <select name="fee_currency" value={formData.fee_currency} onChange={handleFormChange}>
+           <option value="crypto">
+            {getCryptoFromMarket(formData.market) || 'Crypto'} (kryptowaluta)
+           </option>
+           <option value="PLN">PLN (złotówki)</option>
+          </select>
+         </div>
+        </div>
+        <p className="form-hint">
+         💡 Na Zonda prowizja jest pobierana w walucie którą otrzymujesz:
+         {formData.type === 'buy'
+          ? ` przy kupnie w ${getCryptoFromMarket(formData.market) || 'crypto'}`
+          : ' przy sprzedaży w PLN'}
+        </p>
+       </div>
+
        <div className="form-group">
         <label>Notatki</label>
         <textarea
          name="notes"
          value={formData.notes}
          onChange={handleFormChange}
-         placeholder="Dodatkowe informacje, np. prowizja sieciowa, transfer z innej giełdy..."
+         placeholder="Dodatkowe informacje..."
          rows="3"
         />
        </div>
