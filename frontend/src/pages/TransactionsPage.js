@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import './TransactionsPage.css';
 
-function TransactionsPage() {
+function TransactionsPage({ selectedMarket }) {
  const [transactions, setTransactions] = useState([]);
  const [loading, setLoading] = useState(true);
  const [filters, setFilters] = useState({
-  market: '',
   type: '',
   date_from: '',
   date_to: ''
@@ -40,6 +39,7 @@ function TransactionsPage() {
   try {
    const params = {
     ...filters,
+    ...(selectedMarket ? { market: selectedMarket } : {}),
     limit: pagination.limit,
     offset: pagination.offset
    };
@@ -57,7 +57,7 @@ function TransactionsPage() {
   } finally {
    setLoading(false);
   }
- }, [filters, pagination.limit, pagination.offset]);
+ }, [filters, selectedMarket, pagination.limit, pagination.offset]);
 
  useEffect(() => {
   loadTransactions();
@@ -248,29 +248,17 @@ function TransactionsPage() {
  return (
   <div className="transactions-page">
    <div className="page-header">
-    <h2>Historia Transakcji</h2>
+    <h2>
+     {selectedMarket
+      ? `Transakcje: ${selectedMarket}`
+      : 'Wszystkie transakcje'}
+    </h2>
     <button className="btn-add" onClick={openCreateModal}>
      ➕ Dodaj transakcję
     </button>
    </div>
 
    <div className="filters">
-    <div className="filter-group">
-     <label>Rynek:</label>
-     <select name="market" value={filters.market} onChange={handleFilterChange}>
-      <option value="">Wszystkie</option>
-      <option value="BTC-PLN">BTC-PLN</option>
-      <option value="ETH-PLN">ETH-PLN</option>
-      <option value="LTC-PLN">LTC-PLN</option>
-      <option value="BCC-PLN">BCC-PLN</option>
-      <option value="BCH-PLN">BCH-PLN</option>
-      <option value="LSK-PLN">LSK-PLN</option>
-      <option value="DASH-PLN">DASH-PLN</option>
-      <option value="GAME-PLN">GAME-PLN</option>
-      <option value="BTG-PLN">BTG-PLN</option>
-     </select>
-    </div>
-
     <div className="filter-group">
      <label>Typ:</label>
      <select name="type" value={filters.type} onChange={handleFilterChange}>
@@ -309,12 +297,12 @@ function TransactionsPage() {
        <th>Rynek</th>
        <th>Typ</th>
        <th>Rodzaj</th>
-       <th>Kurs</th>
-       <th>Ilość</th>
-       <th>Wartość</th>
-       <th>Prowizja</th>
-       <th title="Notatki">💬</th>
-       <th>Akcje</th>
+       <th className="number">Kurs</th>
+       <th className="number">Ilość</th>
+       <th className="number">Wartość</th>
+       <th className="number">Prowizja</th>
+       <th style={{textAlign:'center'}} title="Notatki">💬</th>
+       <th style={{textAlign:'center'}}>Akcje</th>
       </tr>
      </thead>
      <tbody>

@@ -89,7 +89,7 @@
 .transactions-table th {
  background: #f8f9fa;
  color: #6c757d;
- padding: 0.75rem 0.4rem;
+ padding: 0.75rem 0.75rem;
  text-align: left;
  font-weight: 600;
  font-size: 0.7rem;
@@ -100,7 +100,7 @@
 }
 
 .transactions-table td {
- padding: 0.55rem 0.4rem;
+ padding: 0.55rem 0.75rem;
  border-bottom: 1px solid #f0f0f0;
  font-size: 0.8rem;
  white-space: nowrap;
@@ -159,6 +159,10 @@
  text-align: right;
  font-family: 'Courier New', monospace;
  font-size: 0.78rem;
+}
+
+.transactions-table th.number {
+ text-align: right;
 }
 
 .value {

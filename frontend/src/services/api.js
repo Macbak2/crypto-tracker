@@ -86,6 +86,12 @@ export const getProfitAnalysis = async (year = null, crypto = null) => {
  return response.data;
 };
 
+// Pobieranie listy rynków
+export const getMarkets = async () => {
+ const response = await axios.get(`${API_BASE_URL}/markets.php`);
+ return response.data;
+};
+
 // Domyślny eksport dla kompatybilności wstecznej
 const api = {
  detectFile,
@@ -96,6 +102,7 @@ const api = {
  deleteTransaction,
  getStatistics,
  getProfitAnalysis,
+ getMarkets,
 };
 
 export default api;
