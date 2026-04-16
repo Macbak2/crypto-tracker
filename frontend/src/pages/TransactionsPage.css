@@ -316,6 +316,139 @@
  font-size: 0.85rem;
 }
 
+/* Podsumowanie okresu */
+.tx-summary {
+ background: white;
+ border-radius: 10px;
+ padding: 1.25rem;
+ margin-bottom: 1.5rem;
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tx-summary-title {
+ font-size: 0.7rem;
+ font-weight: 700;
+ text-transform: uppercase;
+ letter-spacing: 0.08em;
+ color: #9aa0b0;
+ margin-bottom: 1rem;
+}
+
+.tx-summary-grid {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+ gap: 1rem;
+}
+
+.tx-summary-card {
+ border-radius: 8px;
+ padding: 1rem 1.1rem;
+ border-left: 4px solid transparent;
+}
+
+.tx-summary-card.buy {
+ background: #f0faf0;
+ border-left-color: #2e7d32;
+}
+
+.tx-summary-card.sell {
+ background: #fff5f5;
+ border-left-color: #c62828;
+}
+
+.tx-summary-card.balance.profit {
+ background: #e8f5e9;
+ border-left-color: #43a047;
+}
+
+.tx-summary-card.balance.loss {
+ background: #ffebee;
+ border-left-color: #e53935;
+}
+
+.tx-summary-card-label {
+ font-size: 0.7rem;
+ font-weight: 700;
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+ color: #6c757d;
+ margin-bottom: 0.75rem;
+}
+
+.tx-summary-card-row {
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ font-size: 0.82rem;
+ padding: 0.2rem 0;
+ border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.tx-summary-card-row:last-child {
+ border-bottom: none;
+}
+
+.tx-summary-card-row span {
+ color: #666;
+}
+
+.tx-summary-card-row strong {
+ font-family: 'Courier New', monospace;
+ font-size: 0.8rem;
+}
+
+.tx-summary-balance-value {
+ font-size: 1.6rem;
+ font-weight: 700;
+ font-family: 'Courier New', monospace;
+ margin-bottom: 0.4rem;
+}
+
+.balance.profit .tx-summary-balance-value { color: #2e7d32; }
+.balance.loss   .tx-summary-balance-value { color: #c62828; }
+
+.tx-summary-balance-desc {
+ font-size: 0.8rem;
+ color: #555;
+ margin-bottom: 0.75rem;
+}
+
+.tx-summary-balance-note {
+ font-size: 0.7rem;
+ color: #aaa;
+ font-style: italic;
+ margin-top: 0.5rem;
+}
+
+.tx-summary-breakeven {
+ margin-top: 0.75rem;
+ padding-top: 0.75rem;
+ border-top: 1px dashed rgba(0,0,0,0.15);
+}
+
+.tx-summary-breakeven-label {
+ font-size: 0.68rem;
+ font-weight: 700;
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+ color: #888;
+ margin-bottom: 0.2rem;
+}
+
+.tx-summary-breakeven-value {
+ font-size: 1.3rem;
+ font-weight: 700;
+ font-family: 'Courier New', monospace;
+ color: #e65100;
+ margin-bottom: 0.3rem;
+}
+
+.tx-summary-breakeven-desc {
+ font-size: 0.75rem;
+ color: #666;
+ line-height: 1.4;
+}
+
 /* Modal */
 .modal-overlay {
  position: fixed;

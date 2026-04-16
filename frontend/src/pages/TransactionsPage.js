@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
+import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getTransactionSummary } from '../services/api';
 import './TransactionsPage.css';
 
 function TransactionsPage({ selectedMarket }) {
@@ -10,6 +10,7 @@ function TransactionsPage({ selectedMarket }) {
   date_from: '',
   date_to: ''
  });
+ const [summary, setSummary] = useState(null);
  const [pagination, setPagination] = useState({
   offset: 0,
   limit: 50,
@@ -62,6 +63,16 @@ function TransactionsPage({ selectedMarket }) {
  useEffect(() => {
   loadTransactions();
  }, [loadTransactions]);
+
+ useEffect(() => {
+  const params = {
+   ...filters,
+   ...(selectedMarket ? { market: selectedMarket } : {}),
+  };
+  getTransactionSummary(params)
+   .then(data => setSummary(data.success ? data : null))
+   .catch(() => setSummary(null));
+ }, [filters, selectedMarket]);
 
  const handleFilterChange = (e) => {
   const { name, value } = e.target;
@@ -371,6 +382,102 @@ function TransactionsPage({ selectedMarket }) {
      </button>
     </div>
    </div>
+
+   {/* Podsumowanie */}
+   {summary && (summary.summary.buy || summary.summary.sell) && (
+    <div className="tx-summary">
+     <div className="tx-summary-title">Podsumowanie okresu</div>
+     <div className="tx-summary-grid">
+
+      {summary.summary.buy && (
+       <div className="tx-summary-card buy">
+        <div className="tx-summary-card-label">Kupno</div>
+        <div className="tx-summary-card-row">
+         <span>Liczba transakcji</span>
+         <strong>{summary.summary.buy.count}</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Łącznie kupiono</span>
+         <strong>{parseFloat(summary.summary.buy.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })}</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Zapłacono łącznie</span>
+         <strong>{parseFloat(summary.summary.buy.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Średni kurs kupna</span>
+         <strong>{parseFloat(summary.summary.buy.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+        </div>
+       </div>
+      )}
+
+      {summary.summary.sell && (
+       <div className="tx-summary-card sell">
+        <div className="tx-summary-card-label">Sprzedaż</div>
+        <div className="tx-summary-card-row">
+         <span>Liczba transakcji</span>
+         <strong>{summary.summary.sell.count}</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Łącznie sprzedano</span>
+         <strong>{parseFloat(summary.summary.sell.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })}</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Otrzymano łącznie</span>
+         <strong>{parseFloat(summary.summary.sell.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+        </div>
+        <div className="tx-summary-card-row">
+         <span>Średni kurs sprzedaży</span>
+         <strong>{parseFloat(summary.summary.sell.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+        </div>
+       </div>
+      )}
+
+      <div className={`tx-summary-card balance ${summary.balance >= 0 ? 'profit' : 'loss'}`}>
+       <div className="tx-summary-card-label">Bilans okresu</div>
+       <div className="tx-summary-balance-value">
+        {summary.balance >= 0 ? '▲' : '▼'}{' '}
+        {Math.abs(summary.balance).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+       </div>
+       <div className="tx-summary-balance-desc">
+        {summary.balance >= 0
+         ? 'Wpływy ze sprzedaży przewyższają koszty kupna'
+         : 'Koszty kupna przewyższają wpływy ze sprzedaży'}
+       </div>
+       {(() => {
+        const boughtAmt = summary.summary.buy?.total_amount  || 0;
+        const soldAmt   = summary.summary.sell?.total_amount || 0;
+        const remaining = boughtAmt - soldAmt;
+        if (summary.balance < 0 && remaining > 0.000000001) {
+         const breakEven = Math.abs(summary.balance) / remaining;
+         const crypto = selectedMarket ? selectedMarket.split('-')[0] : 'krypto';
+         return (
+          <div className="tx-summary-breakeven">
+           <div className="tx-summary-breakeven-label">Próg rentowności</div>
+           <div className="tx-summary-breakeven-value">
+            {breakEven.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN
+           </div>
+           <div className="tx-summary-breakeven-desc">
+            Sprzedaj pozostałe{' '}
+            {remaining.toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} {crypto}{' '}
+            po tym kursie, aby wyjść na zero w tym okresie
+           </div>
+          </div>
+         );
+        }
+        if (summary.balance < 0 && remaining <= 0.000000001) {
+         return <div className="tx-summary-balance-note">Brak pozostałego krypto — strata zrealizowana</div>;
+        }
+        return null;
+       })()}
+       <div className="tx-summary-balance-note">
+        * Bilans kasowy okresu — zmień zakres dat lub wybierz krypto z menu
+       </div>
+      </div>
+
+     </div>
+    </div>
+   )}
 
    {/* Modal */}
    {showModal && (

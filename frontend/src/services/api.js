@@ -86,6 +86,13 @@ export const getProfitAnalysis = async (year = null, crypto = null) => {
  return response.data;
 };
 
+// Podsumowanie transakcji (kupno/sprzedaż/bilans)
+export const getTransactionSummary = async (params = {}) => {
+ const queryString = new URLSearchParams(params).toString();
+ const response = await axios.get(`${API_BASE_URL}/transactions/summary.php?${queryString}`);
+ return response.data;
+};
+
 // Pobieranie listy rynków
 export const getMarkets = async () => {
  const response = await axios.get(`${API_BASE_URL}/markets.php`);
