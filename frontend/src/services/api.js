@@ -99,6 +99,12 @@ export const getMarkets = async () => {
  return response.data;
 };
 
+// Pobieranie lat z danymi
+export const getYears = async () => {
+ const response = await axios.get(`${API_BASE_URL}/years.php`);
+ return response.data;
+};
+
 // Domyślny eksport dla kompatybilności wstecznej
 const api = {
  detectFile,

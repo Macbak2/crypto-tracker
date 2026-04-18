@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = $database->getConnection();
         
         // Parsuj CSV
-        $parsed = CSVParser::parseCSV($file['tmp_name']);
+        $parsed = CSVParser::parseCSV($file['tmp_name'], $file['name']);
         
         $imported = 0;
         $errors = [];
@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'detailed_report':
             case 'operations':
+            case 'transfers':
                 $result = importOperations($db, $parsed['data']);
                 $imported = $result['imported'];
                 $errors = $result['errors'];

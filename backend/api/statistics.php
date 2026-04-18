@@ -98,7 +98,7 @@ try {
  try {
   $stmt = $db->prepare("
             SELECT
-                file_name as filename,
+                file_name,
                 file_type,
                 records_count,
                 date_from,

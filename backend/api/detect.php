@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Parsuj CSV
-        $parsed = CSVParser::parseCSV($file['tmp_name']);
+        $parsed = CSVParser::parseCSV($file['tmp_name'], $file['name']);
         
         // Wykryj zakres dat (jeśli są kolumny z datami)
         $dateRange = extractDateRange($parsed['data'], $parsed['headers']);

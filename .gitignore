@@ -19,3 +19,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Pliki robocze (CSV, notatki, materiały pomocnicze)
+_workspace/

@@ -14,7 +14,7 @@ class CSVParser
   * @param array $headers Nagłówki kolumn
   * @return string Typ pliku: transactions|detailed_report|operations|transfers
   */
- public static function detectFileType($headers)
+ public static function detectFileType($headers, $filename = '', $data = [])
  {
   // Usuń BOM jeśli istnieje
   $headers = array_map(function ($h) {
@@ -29,8 +29,24 @@ class CSVParser
    return 'detailed_report';
   }
 
-  // Dla rozróżnienia operations vs transfers potrzebujemy więcej danych
-  // Na razie zwróć 'operations' - później sprawdzimy ilość rekordów
+  // Operacje vs Transfery — identyczne kolumny, rozróżniamy po zawartości
+  // Transfery zawierają wyłącznie wpłaty i wypłaty
+  $transferTypes = ['Wpłata na rachunek', 'Wypłata środków'];
+  if (!empty($data)) {
+   $familyColumn = in_array('Rodzaj', $headers) ? 'Rodzaj' : null;
+   if ($familyColumn) {
+    $allTransfers = true;
+    foreach ($data as $row) {
+     $rodzaj = trim($row[$familyColumn] ?? '', '"');
+     if (!in_array($rodzaj, $transferTypes)) {
+      $allTransfers = false;
+      break;
+     }
+    }
+    if ($allTransfers) return 'transfers';
+   }
+  }
+
   return 'operations';
  }
 
@@ -40,7 +56,7 @@ class CSVParser
   * @param string $filePath Ścieżka do pliku CSV
   * @return array Dane z pliku
   */
- public static function parseCSV($filePath)
+ public static function parseCSV($filePath, $originalName = '')
  {
   $data = [];
   $headers = [];
@@ -80,7 +96,7 @@ class CSVParser
   return [
    'headers' => $headers,
    'data' => $data,
-   'type' => self::detectFileType($headers),
+   'type' => self::detectFileType($headers, $originalName, $data),
    'count' => count($data)
   ];
  }

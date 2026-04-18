@@ -1,13 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getStatistics } from '../services/api';
+import { getStatistics, getYears } from '../services/api';
 
 const StatisticsPage = () => {
  const [statistics, setStatistics] = useState(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState(null);
- const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+ const [selectedYear, setSelectedYear] = useState(null);
+ const [availableYears, setAvailableYears] = useState([]);
+
+ useEffect(() => {
+  getYears().then(data => {
+   const years = data.years || [];
+   setAvailableYears(years);
+   if (years.length > 0) setSelectedYear(years[0]);
+  }).catch(() => {
+   setAvailableYears([]);
+   setSelectedYear(new Date().getFullYear());
+  });
+ }, []);
 
  const fetchStatistics = useCallback(async () => {
+  if (selectedYear === null) return;
   setLoading(true);
   setError(null);
 
@@ -42,14 +55,6 @@ const StatisticsPage = () => {
   });
  };
 
- const getAvailableYears = () => {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let year = 2017; year <= currentYear; year++) {
-   years.push(year);
-  }
-  return years;
- };
 
  if (loading) {
   return <div className="loader"></div>;
@@ -74,7 +79,7 @@ const StatisticsPage = () => {
       onChange={(e) => setSelectedYear(parseInt(e.target.value))}
       style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
      >
-      {getAvailableYears().map(year => (
+      {availableYears.map(year => (
        <option key={year} value={year}>{year}</option>
       ))}
      </select>
