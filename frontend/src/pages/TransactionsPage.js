@@ -11,6 +11,7 @@ function TransactionsPage({ selectedMarket }) {
   date_to: ''
  });
  const [summary, setSummary] = useState(null);
+ const [sort, setSort] = useState({ by: 'datetime', dir: 'DESC' });
  const [pagination, setPagination] = useState({
   offset: 0,
   limit: 50,
@@ -35,12 +36,22 @@ function TransactionsPage({ selectedMarket }) {
   notes: ''
  });
 
+ const handleSort = (column) => {
+  setSort(prev => ({
+   by: column,
+   dir: prev.by === column && prev.dir === 'DESC' ? 'ASC' : 'DESC'
+  }));
+  setPagination(prev => ({ ...prev, offset: 0 }));
+ };
+
  const loadTransactions = useCallback(async () => {
   setLoading(true);
   try {
    const params = {
     ...filters,
     ...(selectedMarket ? { market: selectedMarket } : {}),
+    sort_by: sort.by,
+    sort_dir: sort.dir,
     limit: pagination.limit,
     offset: pagination.offset
    };
@@ -58,7 +69,7 @@ function TransactionsPage({ selectedMarket }) {
   } finally {
    setLoading(false);
   }
- }, [filters, selectedMarket, pagination.limit, pagination.offset]);
+ }, [filters, selectedMarket, sort, pagination.limit, pagination.offset]);
 
  useEffect(() => {
   loadTransactions();
@@ -304,14 +315,28 @@ function TransactionsPage({ selectedMarket }) {
     <table className="transactions-table">
      <thead>
       <tr>
-       <th>Data</th>
-       <th>Rynek</th>
-       <th>Typ</th>
-       <th>Rodzaj</th>
-       <th className="number">Kurs</th>
-       <th className="number">Ilość</th>
-       <th className="number">Wartość</th>
-       <th className="number">Prowizja</th>
+       {[
+        { label: 'Data',    col: 'datetime' },
+        { label: 'Rynek',   col: 'market' },
+        { label: 'Typ',     col: 'type' },
+        { label: 'Rodzaj',  col: null },
+        { label: 'Kurs',    col: 'rate',   cls: 'number' },
+        { label: 'Ilość',   col: 'amount', cls: 'number' },
+        { label: 'Wartość', col: 'value',  cls: 'number' },
+        { label: 'Prowizja',col: null,     cls: 'number' },
+       ].map(({ label, col, cls }) => (
+        <th
+         key={label}
+         className={[cls, col ? 'sortable' : ''].filter(Boolean).join(' ')}
+         onClick={col ? () => handleSort(col) : undefined}
+        >
+         {label}
+         {col && sort.by === col && (
+          <span className="sort-indicator">{sort.dir === 'DESC' ? ' ▼' : ' ▲'}</span>
+         )}
+         {col && sort.by !== col && <span className="sort-indicator-idle"> ⇅</span>}
+        </th>
+       ))}
        <th style={{textAlign:'center'}} title="Notatki">💬</th>
        <th style={{textAlign:'center'}}>Akcje</th>
       </tr>

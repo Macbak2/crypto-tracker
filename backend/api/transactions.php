@@ -24,6 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
   $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
 
+  $allowedSortColumns = ['datetime', 'rate', 'amount', 'value', 'market', 'type'];
+  $sortBy  = in_array($_GET['sort_by']  ?? '', $allowedSortColumns) ? $_GET['sort_by']  : 'datetime';
+  $sortDir = strtoupper($_GET['sort_dir'] ?? '') === 'ASC' ? 'ASC' : 'DESC';
+
   // Buduj zapytanie
   $sql = "SELECT * FROM transactions WHERE 1=1";
   $params = [];
@@ -48,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
    $params[':date_to'] = $dateTo . ' 23:59:59';
   }
 
-  $sql .= " ORDER BY datetime DESC LIMIT :limit OFFSET :offset";
+  $sql .= " ORDER BY $sortBy $sortDir LIMIT :limit OFFSET :offset";
 
   $stmt = $db->prepare($sql);
 
