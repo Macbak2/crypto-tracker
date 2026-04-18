@@ -75,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 SELECT
                     transaction_id,
                     amount,
-                    currency
+                    currency,
+                    balance_total
                 FROM operations
                 WHERE transaction_id IN ($placeholders)
                 AND operation_type LIKE '%prowizji%'
@@ -93,8 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
      $feesMap[$txId] = [];
     }
     $feesMap[$txId][] = [
-     'amount' => abs(floatval($fee['amount'])),
-     'currency' => $fee['currency']
+     'amount'        => abs(floatval($fee['amount'])),
+     'currency'      => $fee['currency'],
+     'balance_total' => floatval($fee['balance_total']),
     ];
    }
 
@@ -106,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $tx['fee_pln'] = 0;
     $tx['fee_crypto'] = 0;
     $tx['fee_crypto_currency'] = null;
+    $tx['balance_after'] = null;
+    $tx['balance_after_currency'] = null;
 
     foreach ($tx['fees'] as $fee) {
      if ($fee['currency'] === 'PLN') {
@@ -114,6 +118,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
       $tx['fee_crypto'] += $fee['amount'];
       $tx['fee_crypto_currency'] = $fee['currency'];
      }
+     // Saldo po operacji z pliku szczegółowego
+     $tx['balance_after'] = $fee['balance_total'];
+     $tx['balance_after_currency'] = $fee['currency'];
+    }
+
+    // Netto — ile faktycznie trafiło do portfela po prowizji
+    if ($tx['type'] === 'buy') {
+     $tx['net_received']          = floatval($tx['amount']) - $tx['fee_crypto'];
+     $tx['net_received_currency'] = $tx['fee_crypto_currency']
+      ?? explode('-', $tx['market'])[0];
+    } else {
+     $tx['net_received']          = floatval($tx['value']) - $tx['fee_pln'];
+     $tx['net_received_currency'] = explode('-', $tx['market'])[1] ?? 'PLN';
     }
    }
    unset($tx); // Usuń referencję

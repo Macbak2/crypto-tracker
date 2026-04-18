@@ -324,6 +324,8 @@ function TransactionsPage({ selectedMarket }) {
         { label: 'Ilość',   col: 'amount', cls: 'number' },
         { label: 'Wartość', col: 'value',  cls: 'number' },
         { label: 'Prowizja',col: null,     cls: 'number' },
+        { label: 'Netto',   col: null,     cls: 'number' },
+        { label: 'Saldo',   col: null,     cls: 'number' },
        ].map(({ label, col, cls }) => (
         <th
          key={label}
@@ -367,6 +369,22 @@ function TransactionsPage({ selectedMarket }) {
         <td className="number value">{parseFloat(tx.value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</td>
         <td className={`number fee ${hasFee(tx) ? 'has-fee' : ''}`}>
          {formatFee(tx)}
+        </td>
+        <td className="number net-received">
+         {tx.net_received != null
+          ? <>{parseFloat(tx.net_received).toLocaleString('pl-PL', {
+              minimumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
+              maximumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
+             })} <span className="currency-label">{tx.net_received_currency}</span></>
+          : <span className="no-data">—</span>}
+        </td>
+        <td className="number balance-after">
+         {tx.balance_after != null
+          ? <>{parseFloat(tx.balance_after).toLocaleString('pl-PL', {
+              minimumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
+              maximumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
+             })} <span className="currency-label">{tx.balance_after_currency}</span></>
+          : <span className="no-data">—</span>}
         </td>
         <td className="notes-cell">
          {tx.notes ? (

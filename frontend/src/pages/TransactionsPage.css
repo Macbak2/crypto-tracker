@@ -200,6 +200,29 @@
  font-weight: 500;
 }
 
+/* Kolumna netto */
+.net-received {
+ font-size: 0.78rem;
+ font-weight: 500;
+ color: #2e7d32;
+}
+
+/* Kolumna saldo */
+.balance-after {
+ font-size: 0.78rem;
+ color: #1565c0;
+}
+
+.currency-label {
+ font-size: 0.68rem;
+ color: #999;
+ font-family: inherit;
+}
+
+.no-data {
+ color: #ccc;
+}
+
 /* Kolumna notatek - ikonka z tooltipem */
 .notes-cell {
  text-align: center;
