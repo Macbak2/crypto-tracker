@@ -332,6 +332,24 @@
 
 .btn-verify:hover { filter: brightness(0.9); }
 
+/* Calculated / estimated values */
+.balance-calculated {
+ color: #999;
+ font-style: italic;
+}
+
+.calc-indicator {
+ font-style: normal;
+ color: #bbb;
+ margin-right: 1px;
+ font-size: 0.8em;
+}
+
+.net-no-fee {
+ color: #aaa;
+ font-style: italic;
+}
+
 /* Row verification coloring */
 tr.verify-ok         { background: #f6fff6; }
 tr.verify-needs_review { background: #fff5f5; }

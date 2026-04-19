@@ -118,10 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
       $tx['fee_crypto'] += $fee['amount'];
       $tx['fee_crypto_currency'] = $fee['currency'];
      }
-     // Saldo po operacji z pliku szczegółowego
-     $tx['balance_after'] = $fee['balance_total'];
-     $tx['balance_after_currency'] = $fee['currency'];
+     // Saldo po operacji z pliku szczegółowego (niezerowe = dane z giełdy)
+     if ($fee['balance_total'] != 0) {
+      $tx['balance_after']          = $fee['balance_total'];
+      $tx['balance_after_currency'] = $fee['currency'];
+      $tx['balance_after_source']   = 'exchange';
+     }
     }
+
+    $tx['has_real_fee'] = $tx['fee_pln'] > 0 || $tx['fee_crypto'] > 0;
 
     // Netto — ile faktycznie trafiło do portfela po prowizji
     if ($tx['type'] === 'buy') {
@@ -133,7 +138,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
      $tx['net_received_currency'] = explode('-', $tx['market'])[1] ?? 'PLN';
     }
    }
-   unset($tx); // Usuń referencję
+   unset($tx);
+
+   // Wylicz saldo szacunkowe dla transakcji bez danych z giełdy
+   $calcStmt = $db->prepare("
+    SELECT COALESCE(SUM(
+     CASE
+      WHEN t.type = 'buy'  THEN t.amount - COALESCE(f.fee_crypto, 0)
+      WHEN t.type = 'sell' THEN -(t.amount)
+     END
+    ), 0) AS balance
+    FROM transactions t
+    LEFT JOIN (
+     SELECT o.transaction_id, SUM(ABS(o.amount)) AS fee_crypto
+     FROM operations o
+     WHERE o.operation_type LIKE '%prowizji%' AND o.currency != 'PLN'
+     GROUP BY o.transaction_id
+    ) f ON f.transaction_id = t.id
+    WHERE SUBSTRING_INDEX(t.market, '-', 1) = SUBSTRING_INDEX(?, '-', 1)
+      AND (t.datetime < ? OR (t.datetime = ? AND t.id <= ?))
+   ");
+
+   foreach ($transactions as &$tx) {
+    if (isset($tx['balance_after_source'])) continue; // ma dane z giełdy
+    // Saldo wyliczone tylko dla kupna (crypto) — przy sprzedaży nie znamy salda PLN
+    if ($tx['type'] !== 'buy') continue;
+    $calcStmt->execute([$tx['market'], $tx['datetime'], $tx['datetime'], $tx['id']]);
+    $row = $calcStmt->fetch();
+    if ($row !== false) {
+     $tx['balance_after']          = floatval($row['balance']);
+     $tx['balance_after_currency'] = explode('-', $tx['market'])[0];
+     $tx['balance_after_source']   = 'calculated';
+    }
+   }
+   unset($tx);
   }
 
   // Policz wszystkie (bez limitu)

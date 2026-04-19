@@ -386,18 +386,27 @@ function TransactionsPage({ selectedMarket }) {
         </td>
         <td className="number net-received">
          {tx.net_received != null
-          ? <>{parseFloat(tx.net_received).toLocaleString('pl-PL', {
-              minimumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
-              maximumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
-             })} <span className="currency-label">{tx.net_received_currency}</span></>
+          ? <span title={!tx.has_real_fee ? 'Brak danych o prowizji — kwota brutto' : undefined}
+                  className={!tx.has_real_fee ? 'net-no-fee' : ''}>
+              {parseFloat(tx.net_received).toLocaleString('pl-PL', {
+               minimumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
+               maximumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
+              })} <span className="currency-label">{tx.net_received_currency}</span>
+             </span>
           : <span className="no-data">—</span>}
         </td>
         <td className="number balance-after">
          {tx.balance_after != null
-          ? <>{parseFloat(tx.balance_after).toLocaleString('pl-PL', {
-              minimumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
-              maximumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
-             })} <span className="currency-label">{tx.balance_after_currency}</span></>
+          ? <span
+              className={tx.balance_after_source === 'calculated' ? 'balance-calculated' : ''}
+              title={tx.balance_after_source === 'calculated' ? 'Saldo wyliczone z historii transakcji — może się różnić od salda giełdowego' : 'Saldo z danych giełdowych'}
+            >
+              {tx.balance_after_source === 'calculated' && <span className="calc-indicator">~</span>}
+              {parseFloat(tx.balance_after).toLocaleString('pl-PL', {
+               minimumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
+               maximumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
+              })} <span className="currency-label">{tx.balance_after_currency}</span>
+             </span>
           : <span className="no-data">—</span>}
         </td>
         <td className="notes-cell">
