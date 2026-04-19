@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getTransactionSummary } from '../services/api';
+import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getTransactionSummary, setVerificationStatus } from '../services/api';
 import './TransactionsPage.css';
 
 function TransactionsPage({ selectedMarket }) {
@@ -249,6 +249,20 @@ function TransactionsPage({ selectedMarket }) {
   }
  };
 
+ const VERIFY_CYCLE = ['unverified', 'ok', 'needs_review'];
+ const VERIFY_LABELS = { unverified: '○', ok: '✓', needs_review: '!' };
+ const VERIFY_TITLES = { unverified: 'Niezweryfikowana', ok: 'Zweryfikowana OK', needs_review: 'Wymaga sprawdzenia' };
+
+ const handleVerify = async (tx) => {
+  const next = VERIFY_CYCLE[(VERIFY_CYCLE.indexOf(tx.verification_status) + 1) % VERIFY_CYCLE.length];
+  try {
+   await setVerificationStatus(tx.id, next);
+   setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, verification_status: next } : t));
+  } catch (error) {
+   console.error('Błąd zmiany statusu:', error);
+  }
+ };
+
  const handleDelete = async (id) => {
   if (!window.confirm('Czy na pewno chcesz usunąć tę transakcję?')) {
    return;
@@ -345,7 +359,7 @@ function TransactionsPage({ selectedMarket }) {
      </thead>
      <tbody>
       {transactions.map(tx => (
-       <tr key={tx.id}>
+       <tr key={tx.id} className={`verify-${tx.verification_status || 'unverified'}`}>
         <td>{new Date(tx.datetime).toLocaleString('pl-PL', {
          day: '2-digit',
          month: '2-digit',
@@ -396,6 +410,13 @@ function TransactionsPage({ selectedMarket }) {
          )}
         </td>
         <td className="actions">
+         <button
+          className={`btn-verify status-${tx.verification_status || 'unverified'}`}
+          onClick={() => handleVerify(tx)}
+          title={VERIFY_TITLES[tx.verification_status || 'unverified']}
+         >
+          {VERIFY_LABELS[tx.verification_status || 'unverified']}
+         </button>
          <button className="btn-edit" onClick={() => openEditModal(tx)} title="Edytuj">
           ✏️
          </button>

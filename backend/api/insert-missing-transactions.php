@@ -4,7 +4,7 @@
  * GET /api/insert-missing-transactions.php
  * GET /api/insert-missing-transactions.php?dry_run=1  — podgląd bez zapisu
  */
-header('Access-Control-Allow-Origin: http://localhost:3000');
+header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=utf-8');
 require_once '../config/database.php';
 

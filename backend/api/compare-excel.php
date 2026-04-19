@@ -3,7 +3,7 @@
  * Porównanie danych Excel (CSV) z bazą danych
  * GET /api/compare-excel.php?crypto=LTC&year=2017
  */
-header('Access-Control-Allow-Origin: http://localhost:3000');
+header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=utf-8');
 
 require_once '../config/database.php';
@@ -174,9 +174,21 @@ function compareRows($excel, $db, $type) {
         if ($type === 'buy') {
             $vd = abs($ex['total_cost'] - floatval($dbr['value']));
             if ($vd > TOLERANCE_VALUE) $issues[] = sprintf("Koszt: Excel=%.2f DB=%.2f", $ex['total_cost'], $dbr['value']);
+
+            // Prowizja crypto (buy)
+            $fd = abs($ex['fee'] - floatval($dbr['fee_crypto']));
+            if ($fd > TOLERANCE_AMOUNT) $issues[] = sprintf("Prowizja: Excel=%.8f DB=%.8f%s",
+                $ex['fee'], $dbr['fee_crypto'],
+                $dbr['fee_crypto'] > 0 && abs($dbr['fee_crypto'] / max($ex['fee'], 0.00000001) - 2) < 0.01 ? ' (podwojona — duplikat w operacje)' : '');
         } else {
             $vd = abs($ex['revenue'] - floatval($dbr['value']));
             if ($vd > TOLERANCE_VALUE) $issues[] = sprintf("Przychód: Excel=%.2f DB=%.2f", $ex['revenue'], $dbr['value']);
+
+            // Prowizja PLN (sell)
+            $fd = abs($ex['fee'] - floatval($dbr['fee_pln']));
+            if ($fd > TOLERANCE_VALUE) $issues[] = sprintf("Prowizja PLN: Excel=%.2f DB=%.2f%s",
+                $ex['fee'], $dbr['fee_pln'],
+                $dbr['fee_pln'] > 0 && abs($dbr['fee_pln'] / max($ex['fee'], 0.01) - 2) < 0.01 ? ' (podwojona — duplikat w operacje)' : '');
         }
 
         $status = empty($issues) ? 'ok' : (count($issues) === 1 && str_starts_with($issues[0], 'Czas') ? 'ok' : 'mismatch');

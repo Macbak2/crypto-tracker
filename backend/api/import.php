@@ -70,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             'success' => true,
             'imported' => $imported,
+            'duplicates' => $result['duplicates'] ?? 0,
             'total' => $parsed['count'],
             'errors' => $errors,
             'file_type' => $parsed['type']
@@ -137,46 +138,65 @@ function importTransactions($db, $data) {
  */
 function importOperations($db, $data) {
     $imported = 0;
+    $duplicates = 0;
     $errors = [];
-    
-    // Sprawdź czy są kolumny z saldami dostępnymi
+
     $hasDetailedBalances = isset($data[0]['Saldo dostępne po operacji']);
-    
+
+    $checkStmt = $db->prepare("
+        SELECT id FROM operations
+        WHERE datetime = ? AND operation_type = ? AND currency = ? AND amount = ? AND balance_total = ?
+        LIMIT 1
+    ");
+
     if ($hasDetailedBalances) {
-        $stmt = $db->prepare("
+        $insertStmt = $db->prepare("
             INSERT INTO operations (datetime, operation_type, amount, currency, balance_available, balance_locked, balance_total)
             VALUES (:datetime, :operation_type, :amount, :currency, :balance_available, :balance_locked, :balance_total)
         ");
     } else {
-        $stmt = $db->prepare("
+        $insertStmt = $db->prepare("
             INSERT INTO operations (datetime, operation_type, amount, currency, balance_total)
             VALUES (:datetime, :operation_type, :amount, :currency, :balance_total)
         ");
     }
-    
+
     foreach ($data as $index => $row) {
         try {
+            $datetime      = CSVParser::parseDateTime($row['Data operacji']);
+            $operationType = $row['Rodzaj'];
+            $amount        = CSVParser::parseNumber($row['Wartość']);
+            $currency      = $row['Waluta'];
+            $balanceTotal  = CSVParser::parseNumber($row['Saldo całkowite po operacji']);
+
+            // Pomiń dokładne duplikaty (ten sam datetime, typ, waluta, kwota i saldo)
+            $checkStmt->execute([$datetime, $operationType, $currency, $amount, $balanceTotal]);
+            if ($checkStmt->fetch()) {
+                $duplicates++;
+                continue;
+            }
+
             $params = [
-                ':datetime' => CSVParser::parseDateTime($row['Data operacji']),
-                ':operation_type' => $row['Rodzaj'],
-                ':amount' => CSVParser::parseNumber($row['Wartość']),
-                ':currency' => $row['Waluta'],
-                ':balance_total' => CSVParser::parseNumber($row['Saldo całkowite po operacji'])
+                ':datetime'       => $datetime,
+                ':operation_type' => $operationType,
+                ':amount'         => $amount,
+                ':currency'       => $currency,
+                ':balance_total'  => $balanceTotal,
             ];
-            
+
             if ($hasDetailedBalances) {
                 $params[':balance_available'] = CSVParser::parseNumber($row['Saldo dostępne po operacji']);
-                $params[':balance_locked'] = CSVParser::parseNumber($row['Saldo zablokowane po operacji']);
+                $params[':balance_locked']    = CSVParser::parseNumber($row['Saldo zablokowane po operacji']);
             }
-            
-            $stmt->execute($params);
+
+            $insertStmt->execute($params);
             $imported++;
         } catch (Exception $e) {
             $errors[] = "Linia " . ($index + 2) . ": " . $e->getMessage();
         }
     }
-    
-    return ['imported' => $imported, 'errors' => $errors];
+
+    return ['imported' => $imported, 'duplicates' => $duplicates, 'errors' => $errors];
 }
 
 /**

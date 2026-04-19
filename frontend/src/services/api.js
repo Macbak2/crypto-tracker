@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost/Projekty-Github/crypto-tracker/backend/api';
+const API_BASE_URL = `http://${window.location.hostname}/Projekty-Github/crypto-tracker/backend/api`;
 
 // Wykrywanie typu pliku
 export const detectFile = async (file) => {
@@ -102,6 +102,12 @@ export const getMarkets = async () => {
 // Pobieranie lat z danymi
 export const getYears = async () => {
  const response = await axios.get(`${API_BASE_URL}/years.php`);
+ return response.data;
+};
+
+// Zmiana statusu weryfikacji transakcji
+export const setVerificationStatus = async (id, status) => {
+ const response = await axios.patch(`${API_BASE_URL}/transactions/verify.php`, { id, status });
  return response.data;
 };
 
