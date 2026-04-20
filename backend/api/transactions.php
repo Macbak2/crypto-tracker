@@ -140,35 +140,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
    }
    unset($tx);
 
-   // Wylicz saldo szacunkowe dla transakcji bez danych z giełdy
-   $calcStmt = $db->prepare("
-    SELECT COALESCE(SUM(
-     CASE
-      WHEN t.type = 'buy'  THEN t.amount - COALESCE(f.fee_crypto, 0)
-      WHEN t.type = 'sell' THEN -(t.amount)
-     END
-    ), 0) AS balance
-    FROM transactions t
-    LEFT JOIN (
-     SELECT o.transaction_id, SUM(ABS(o.amount)) AS fee_crypto
-     FROM operations o
-     WHERE o.operation_type LIKE '%prowizji%' AND o.currency != 'PLN'
-     GROUP BY o.transaction_id
-    ) f ON f.transaction_id = t.id
-    WHERE SUBSTRING_INDEX(t.market, '-', 1) = SUBSTRING_INDEX(?, '-', 1)
-      AND (t.datetime < ? OR (t.datetime = ? AND t.id <= ?))
+   // Saldo krypto dla zakupów bez danych giełdowych:
+   // znajdź ostatnią operację danej waluty z niezerowym balance_total.
+   $cryptoBalStmt = $db->prepare("
+    SELECT balance_total
+    FROM operations
+    WHERE currency = ?
+      AND balance_total != 0
+      AND datetime <= ?
+    ORDER BY datetime DESC, id DESC
+    LIMIT 1
    ");
 
    foreach ($transactions as &$tx) {
-    if (isset($tx['balance_after_source'])) continue; // ma dane z giełdy
-    // Saldo wyliczone tylko dla kupna (crypto) — przy sprzedaży nie znamy salda PLN
+    if (isset($tx['balance_after_source'])) continue;
     if ($tx['type'] !== 'buy') continue;
-    $calcStmt->execute([$tx['market'], $tx['datetime'], $tx['datetime'], $tx['id']]);
-    $row = $calcStmt->fetch();
+    $currency = explode('-', $tx['market'])[0];
+    $cryptoBalStmt->execute([$currency, $tx['datetime']]);
+    $row = $cryptoBalStmt->fetch();
     if ($row !== false) {
-     $tx['balance_after']          = floatval($row['balance']);
-     $tx['balance_after_currency'] = explode('-', $tx['market'])[0];
-     $tx['balance_after_source']   = 'calculated';
+     $tx['balance_after']          = floatval($row['balance_total']);
+     $tx['balance_after_currency'] = $currency;
+     $tx['balance_after_source']   = 'exchange';
+    }
+   }
+   unset($tx);
+
+   // Saldo PLN dla sprzedaży bez danych giełdowych:
+   // znajdź ostatnią operację PLN z niezerowym balance_total w okolicach tej transakcji.
+   $plnBalStmt = $db->prepare("
+    SELECT balance_total
+    FROM operations
+    WHERE currency = 'PLN'
+      AND balance_total != 0
+      AND datetime <= ?
+    ORDER BY datetime DESC, id DESC
+    LIMIT 1
+   ");
+
+   foreach ($transactions as &$tx) {
+    if (isset($tx['balance_after_source'])) continue;
+    if ($tx['type'] !== 'sell') continue;
+    $plnBalStmt->execute([$tx['datetime']]);
+    $row = $plnBalStmt->fetch();
+    if ($row !== false) {
+     $tx['balance_after']          = floatval($row['balance_total']);
+     $tx['balance_after_currency'] = 'PLN';
+     $tx['balance_after_source']   = 'exchange';
     }
    }
    unset($tx);

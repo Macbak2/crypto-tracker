@@ -13,6 +13,29 @@
  margin-bottom: 1.5rem;
 }
 
+.header-actions {
+ display: flex;
+ gap: 0.5rem;
+ align-items: center;
+}
+
+.btn-export {
+ background: #fff;
+ color: #555;
+ border: 1px solid #ccc;
+ padding: 0.6rem 1rem;
+ border-radius: 8px;
+ font-size: 0.85rem;
+ font-weight: 600;
+ cursor: pointer;
+ transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-export:hover {
+ background: #f0f0f0;
+ border-color: #999;
+}
+
 .btn-add {
  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
  color: white;
@@ -335,6 +358,11 @@
 /* Calculated / estimated values */
 .balance-calculated {
  color: #999;
+ font-style: italic;
+}
+
+.balance-inferred {
+ color: #e65100;
  font-style: italic;
 }
 

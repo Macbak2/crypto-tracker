@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getTransactionSummary, setVerificationStatus } from '../services/api';
+import * as XLSX from 'xlsx';
 import './TransactionsPage.css';
 
 function TransactionsPage({ selectedMarket }) {
@@ -92,6 +93,57 @@ function TransactionsPage({ selectedMarket }) {
    [name]: value
   }));
   setPagination(prev => ({ ...prev, offset: 0 }));
+ };
+
+ const handleExport = async (format) => {
+  try {
+   const params = {
+    ...filters,
+    ...(selectedMarket ? { market: selectedMarket } : {}),
+    sort_by: sort.by,
+    sort_dir: sort.dir,
+    limit: 99999,
+    offset: 0
+   };
+   const data = await getTransactions(params);
+   const rows = (data.transactions || []).map(tx => ({
+    'Data':            tx.datetime,
+    'Rynek':           tx.market,
+    'Typ':             tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
+    'Rodzaj':          tx.order_type,
+    'Kurs':            parseFloat(tx.rate),
+    'Ilość':           parseFloat(tx.amount),
+    'Wartość':         parseFloat(tx.value),
+    'Prowizja PLN':    tx.fee_pln || 0,
+    'Prowizja krypto': tx.fee_crypto || 0,
+    'Waluta prowizji': tx.fee_crypto_currency || '',
+    'Netto':           tx.net_received != null ? parseFloat(tx.net_received) : '',
+    'Waluta netto':    tx.net_received_currency || '',
+    'Saldo po':        tx.balance_after != null ? parseFloat(tx.balance_after) : '',
+    'Waluta salda':    tx.balance_after_currency || '',
+   }));
+
+   const ws = XLSX.utils.json_to_sheet(rows);
+   const wb = XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb, ws, 'Transakcje');
+
+   const filename = `transakcje_${selectedMarket || 'wszystkie'}_${new Date().toISOString().slice(0,10)}`;
+   if (format === 'xlsx') {
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+   } else {
+    // UTF-8 BOM zapewnia poprawne polskie znaki w Excel
+    const csv = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+   }
+  } catch (err) {
+   console.error('Błąd eksportu:', err);
+  }
  };
 
  const nextPage = () => {
@@ -289,9 +341,11 @@ function TransactionsPage({ selectedMarket }) {
       ? `Transakcje: ${selectedMarket}`
       : 'Wszystkie transakcje'}
     </h2>
-    <button className="btn-add" onClick={openCreateModal}>
-     ➕ Dodaj transakcję
-    </button>
+    <div className="header-actions">
+     <button className="btn-export" onClick={() => handleExport('xlsx')} title="Eksportuj do XLSX">⬇ XLSX</button>
+     <button className="btn-export" onClick={() => handleExport('csv')}  title="Eksportuj do CSV">⬇ CSV</button>
+     <button className="btn-add" onClick={openCreateModal}>➕ Dodaj transakcję</button>
+    </div>
    </div>
 
    <div className="filters">
@@ -398,10 +452,18 @@ function TransactionsPage({ selectedMarket }) {
         <td className="number balance-after">
          {tx.balance_after != null
           ? <span
-              className={tx.balance_after_source === 'calculated' ? 'balance-calculated' : ''}
-              title={tx.balance_after_source === 'calculated' ? 'Saldo wyliczone z historii transakcji — może się różnić od salda giełdowego' : 'Saldo z danych giełdowych'}
+              className={
+                tx.balance_after_source === 'calculated' ? 'balance-calculated' :
+                tx.balance_after_source === 'inferred'   ? 'balance-inferred'   : ''
+              }
+              title={
+                tx.balance_after_source === 'calculated' ? 'Saldo wyliczone z historii transakcji — może się różnić od salda giełdowego' :
+                tx.balance_after_source === 'inferred'   ? 'Saldo przybliżone — wyliczone z następnej transakcji. Wymaga weryfikacji!' :
+                'Saldo z danych giełdowych'
+              }
             >
               {tx.balance_after_source === 'calculated' && <span className="calc-indicator">~</span>}
+              {tx.balance_after_source === 'inferred'   && <span className="calc-indicator">≈</span>}
               {parseFloat(tx.balance_after).toLocaleString('pl-PL', {
                minimumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
                maximumFractionDigits: tx.balance_after_currency === 'PLN' ? 2 : 8,
