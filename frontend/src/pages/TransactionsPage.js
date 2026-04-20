@@ -244,7 +244,7 @@ function TransactionsPage({ selectedMarket }) {
    type: transaction.type,
    order_type: transaction.order_type,
    rate: transaction.rate,
-   amount: transaction.amount,
+   amount: parseFloat(transaction.amount).toFixed(8),
    value: transaction.value,
    fee_amount: feeAmount,
    fee_currency: feeCurrency,
@@ -294,6 +294,7 @@ function TransactionsPage({ selectedMarket }) {
    const dataToSend = {
     ...formData,
     datetime: formData.datetime.replace('T', ' ') + ':00',
+    amount: parseFloat(String(formData.amount).replace(',', '.')),
     fee_amount: formData.fee_amount !== '' ? parseFloat(String(formData.fee_amount).replace(',', '.')) : null,
     fee_currency: formData.fee_currency === 'crypto'
      ? getCryptoFromMarket(formData.market)
@@ -698,8 +699,7 @@ function TransactionsPage({ selectedMarket }) {
         <div className="form-group">
          <label>Ilość *</label>
          <input
-          type="number"
-          step="0.00000001"
+          type="text"
           name="amount"
           value={formData.amount}
           onChange={handleFormChange}

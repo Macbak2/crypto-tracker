@@ -64,12 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
   $feeAmount = $feeAmountSet ? floatval($data->fee_amount) : null;
   $feeCurrency = isset($data->fee_currency) ? $data->fee_currency : null;
 
-  // Usuń starą prowizję dla tej transakcji (jeśli była dodana ręcznie)
+  // Usuń WSZYSTKIE prowizje tej transakcji — edycja nadpisuje całość
   $stmt = $db->prepare("
             DELETE FROM operations
             WHERE transaction_id = :transaction_id
             AND operation_type = 'Pobranie prowizji za transakcję'
-            AND notes = 'Prowizja dodana ręcznie'
         ");
   $stmt->execute([':transaction_id' => $data->id]);
 
