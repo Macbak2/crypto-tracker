@@ -73,10 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   ]);
 
   // 2. Jeśli jest prowizja, zapisz do operations
-  $feeAmount = isset($data->fee_amount) ? floatval($data->fee_amount) : 0;
+  $feeAmountSet = isset($data->fee_amount) && $data->fee_amount !== null;
+  $feeAmount = $feeAmountSet ? floatval($data->fee_amount) : null;
   $feeCurrency = isset($data->fee_currency) ? $data->fee_currency : null;
 
-  if ($feeAmount > 0 && $feeCurrency) {
+  if ($feeCurrency && $feeAmountSet) {
    $stmt = $db->prepare("
                 INSERT INTO operations (datetime, operation_type, amount, currency, transaction_id, notes)
                 VALUES (:datetime, :operation_type, :amount, :currency, :transaction_id, :notes)
@@ -97,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   echo json_encode([
    'success' => true,
-   'message' => 'Transakcja została dodana' . ($feeAmount > 0 ? ' wraz z prowizją' : ''),
+   'message' => 'Transakcja została dodana' . ($feeCurrency && $feeAmountSet ? ' wraz z prowizją' : ''),
    'id' => $uuid,
-   'fee_saved' => $feeAmount > 0
+   'fee_saved' => $feeCurrency !== null && $feeAmountSet
   ]);
  } catch (Exception $e) {
   // Wycofaj transakcję w razie błędu

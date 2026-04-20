@@ -60,7 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
   ]);
 
   // 2. Obsłuż prowizję
-  $feeAmount = isset($data->fee_amount) ? floatval($data->fee_amount) : 0;
+  $feeAmountSet = isset($data->fee_amount) && $data->fee_amount !== null;
+  $feeAmount = $feeAmountSet ? floatval($data->fee_amount) : null;
   $feeCurrency = isset($data->fee_currency) ? $data->fee_currency : null;
 
   // Usuń starą prowizję dla tej transakcji (jeśli była dodana ręcznie)
@@ -72,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         ");
   $stmt->execute([':transaction_id' => $data->id]);
 
-  // Dodaj nową prowizję jeśli jest
-  if ($feeAmount > 0 && $feeCurrency) {
+  // Dodaj nową prowizję jeśli waluta i kwota są jawnie podane (kwota może być 0)
+  if ($feeCurrency && $feeAmountSet) {
    $stmt = $db->prepare("
                 INSERT INTO operations (datetime, operation_type, amount, currency, transaction_id, notes)
                 VALUES (:datetime, :operation_type, :amount, :currency, :transaction_id, :notes)
@@ -95,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
   echo json_encode([
    'success' => true,
    'message' => 'Transakcja została zaktualizowana',
-   'fee_saved' => $feeAmount > 0
+   'fee_saved' => $feeCurrency !== null && $feeAmountSet
   ]);
  } catch (Exception $e) {
   if (isset($db) && $db->inTransaction()) {

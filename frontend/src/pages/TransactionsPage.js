@@ -182,7 +182,16 @@ function TransactionsPage({ selectedMarket }) {
    parts.push(`${parseFloat(tx.fee_crypto).toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} ${tx.fee_crypto_currency || 'CRYPTO'}`);
   }
 
-  return parts.length > 0 ? parts.join(' + ') : '-';
+  if (parts.length > 0) return parts.join(' + ');
+
+  // Prowizja zapisana jako 0 — pokaż z odpowiednim formatowaniem
+  if (tx.has_real_fee && tx.fees && tx.fees.length > 0) {
+   const zeroFee = tx.fees[0];
+   const decimals = zeroFee.currency === 'PLN' ? 2 : 8;
+   return `${(0).toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${zeroFee.currency}`;
+  }
+
+  return parseFloat(tx.rate) === 0 ? '0' : '-';
  };
 
  // Sprawdź czy transakcja ma prowizję
@@ -216,12 +225,17 @@ function TransactionsPage({ selectedMarket }) {
   let feeCurrency = 'crypto';
   let feeAmount = '';
 
-  if (transaction.fee_pln && transaction.fee_pln > 0) {
+  if (transaction.fee_pln > 0) {
    feeCurrency = 'PLN';
-   feeAmount = transaction.fee_pln;
-  } else if (transaction.fee_crypto && transaction.fee_crypto > 0) {
+   feeAmount = parseFloat(transaction.fee_pln).toFixed(2);
+  } else if (transaction.fee_crypto > 0) {
    feeCurrency = 'crypto';
-   feeAmount = transaction.fee_crypto;
+   feeAmount = parseFloat(transaction.fee_crypto).toFixed(8);
+  } else if (transaction.has_real_fee && transaction.fees.length > 0) {
+   // Prowizja zapisana jako 0
+   const zeroFee = transaction.fees[0];
+   feeCurrency = zeroFee.currency === 'PLN' ? 'PLN' : 'crypto';
+   feeAmount = zeroFee.currency === 'PLN' ? '0.00' : '0.00000000';
   }
 
   setFormData({
@@ -280,7 +294,7 @@ function TransactionsPage({ selectedMarket }) {
    const dataToSend = {
     ...formData,
     datetime: formData.datetime.replace('T', ' ') + ':00',
-    fee_amount: formData.fee_amount ? parseFloat(formData.fee_amount) : 0,
+    fee_amount: formData.fee_amount !== '' ? parseFloat(String(formData.fee_amount).replace(',', '.')) : null,
     fee_currency: formData.fee_currency === 'crypto'
      ? getCryptoFromMarket(formData.market)
      : 'PLN'
@@ -440,8 +454,8 @@ function TransactionsPage({ selectedMarket }) {
         </td>
         <td className="number net-received">
          {tx.net_received != null
-          ? <span title={!tx.has_real_fee ? 'Brak danych o prowizji — kwota brutto' : undefined}
-                  className={!tx.has_real_fee ? 'net-no-fee' : ''}>
+          ? <span title={!tx.has_real_fee && parseFloat(tx.rate) !== 0 ? 'Brak danych o prowizji — kwota brutto' : undefined}
+                  className={!tx.has_real_fee && parseFloat(tx.rate) !== 0 ? 'net-no-fee' : ''}>
               {parseFloat(tx.net_received).toLocaleString('pl-PL', {
                minimumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
                maximumFractionDigits: tx.net_received_currency === 'PLN' ? 2 : 8,
@@ -715,12 +729,11 @@ function TransactionsPage({ selectedMarket }) {
          <div className="form-group">
           <label>Kwota prowizji</label>
           <input
-           type="number"
-           step="0.00000001"
+           type="text"
            name="fee_amount"
            value={formData.fee_amount}
            onChange={handleFormChange}
-           placeholder="0.00"
+           placeholder="0.00000000"
           />
          </div>
 

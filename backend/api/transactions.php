@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
      }
     }
 
-    $tx['has_real_fee'] = $tx['fee_pln'] > 0 || $tx['fee_crypto'] > 0;
+    $tx['has_real_fee'] = !empty($tx['fees']) || $tx['fee_pln'] > 0 || $tx['fee_crypto'] > 0;
 
     // Netto — ile faktycznie trafiło do portfela po prowizji
     if ($tx['type'] === 'buy') {
