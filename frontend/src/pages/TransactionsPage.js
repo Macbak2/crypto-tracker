@@ -77,6 +77,10 @@ function TransactionsPage({ selectedMarket }) {
  }, [loadTransactions]);
 
  useEffect(() => {
+  setPagination(prev => ({ ...prev, offset: 0 }));
+ }, [selectedMarket]);
+
+ useEffect(() => {
   const params = {
    ...filters,
    ...(selectedMarket ? { market: selectedMarket } : {}),
@@ -109,8 +113,8 @@ function TransactionsPage({ selectedMarket }) {
    const rows = (data.transactions || []).map(tx => ({
     'Data':            tx.datetime,
     'Rynek':           tx.market,
-    'Typ':             tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
-    'Rodzaj':          tx.order_type,
+    'Rodzaj':          tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
+    'Typ':             tx.order_type,
     'Kurs':            parseFloat(tx.rate),
     'Ilość':           parseFloat(tx.amount),
     'Wartość':         parseFloat(tx.value),
@@ -365,7 +369,7 @@ function TransactionsPage({ selectedMarket }) {
 
    <div className="filters">
     <div className="filter-group">
-     <label>Typ:</label>
+     <label>Rodzaj:</label>
      <select name="type" value={filters.type} onChange={handleFilterChange}>
       <option value="">Wszystkie</option>
       <option value="buy">Kupno</option>
@@ -401,8 +405,8 @@ function TransactionsPage({ selectedMarket }) {
        {[
         { label: 'Data',    col: 'datetime' },
         { label: 'Rynek',   col: 'market' },
-        { label: 'Typ',     col: 'type' },
-        { label: 'Rodzaj',  col: null },
+        { label: 'Rodzaj',  col: 'type' },
+        { label: 'Typ',     col: null },
         { label: 'Kurs',    col: 'rate',   cls: 'number' },
         { label: 'Ilość',   col: 'amount', cls: 'number' },
         { label: 'Wartość', col: 'value',  cls: 'number' },
@@ -666,7 +670,7 @@ function TransactionsPage({ selectedMarket }) {
 
        <div className="form-row">
         <div className="form-group">
-         <label>Typ transakcji *</label>
+         <label>Rodzaj transakcji *</label>
          <select name="type" value={formData.type} onChange={handleFormChange} required>
           <option value="buy">Kupno</option>
           <option value="sell">Sprzedaż</option>
@@ -674,7 +678,7 @@ function TransactionsPage({ selectedMarket }) {
         </div>
 
         <div className="form-group">
-         <label>Rodzaj zlecenia *</label>
+         <label>Typ zlecenia *</label>
          <select name="order_type" value={formData.order_order} onChange={handleFormChange} required>
           <option value="maker">Maker</option>
           <option value="taker">Taker</option>
