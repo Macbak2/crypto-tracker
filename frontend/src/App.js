@@ -6,6 +6,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import DashboardPage from './pages/DashboardPage';
 import StatisticsPage from './pages/StatisticsPage';
 import ProfitAnalysisPage from './pages/ProfitAnalysisPage';
+import OperationsPage from './pages/OperationsPage';
 import { getMarkets } from './services/api';
 
 function NavLink({ to, children }) {
@@ -42,7 +43,7 @@ function Sidebar({ selectedMarket, onSelectMarket }) {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">Kryptowaluty</div>
+      <div className="sidebar-header">Filtr transakcji</div>
       <ul className="sidebar-list">
         <li
           className={`sidebar-item ${selectedMarket === null ? 'active' : ''}`}
@@ -78,6 +79,8 @@ function AppLayout() {
           <ul className="nav-menu">
             <NavLink to="/">Dashboard</NavLink>
             <NavLink to="/import">Import</NavLink>
+            <NavLink to="/transactions">Transakcje</NavLink>
+            <NavLink to="/operations">Operacje</NavLink>
             <NavLink to="/statistics">Statystyki</NavLink>
             <NavLink to="/profit-analysis">Zyski / Straty</NavLink>
           </ul>
@@ -93,6 +96,7 @@ function AppLayout() {
             <Route path="/transactions" element={<TransactionsPage selectedMarket={selectedMarket} />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/profit-analysis" element={<ProfitAnalysisPage />} />
+            <Route path="/operations" element={<OperationsPage />} />
           </Routes>
         </main>
       </div>

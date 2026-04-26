@@ -105,6 +105,13 @@ export const getYears = async () => {
  return response.data;
 };
 
+// Pobieranie operacji
+export const getOperations = async (params = {}) => {
+ const queryString = new URLSearchParams(params).toString();
+ const response = await axios.get(`${API_BASE_URL}/operations.php?${queryString}`);
+ return response.data;
+};
+
 // Zmiana statusu weryfikacji transakcji
 export const setVerificationStatus = async (id, status) => {
  const response = await axios.patch(`${API_BASE_URL}/transactions/verify.php`, { id, status });
