@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import { getOperations } from '../services/api';
+import { getOperations, setOperationVerificationStatus } from '../services/api';
 import './OperationsPage.css';
+
+const VERIFY_CYCLE  = ['unverified', 'ok', 'needs_review'];
+const VERIFY_LABELS = { unverified: '○', ok: '✓', needs_review: '!' };
+const VERIFY_TITLES = { unverified: 'Niezweryfikowana', ok: 'Zweryfikowana OK', needs_review: 'Wymaga sprawdzenia' };
 
 function OperationsPage() {
  const [operations, setOperations]   = useState([]);
@@ -46,6 +50,16 @@ function OperationsPage() {
   setPagination(prev => ({ ...prev, offset: 0 }));
  };
 
+ const handleVerify = async (op) => {
+  const next = VERIFY_CYCLE[(VERIFY_CYCLE.indexOf(op.verification_status || 'unverified') + 1) % VERIFY_CYCLE.length];
+  try {
+   await setOperationVerificationStatus(op.id, next);
+   setOperations(prev => prev.map(o => o.id === op.id ? { ...o, verification_status: next } : o));
+  } catch (e) {
+   console.error('Błąd zmiany statusu:', e);
+  }
+ };
+
  const handleExport = async (format) => {
   const data = await getOperations({ ...filters, sort_by: sort.by, sort_dir: sort.dir, limit: 99999, offset: 0 });
   const rows = (data.operations || []).map(op => ({
@@ -56,6 +70,7 @@ function OperationsPage() {
    'Saldo dostępne': op.balance_available != null ? parseFloat(op.balance_available) : '',
    'Saldo całkowite':op.balance_total != null ? parseFloat(op.balance_total) : '',
    'ID transakcji':  op.transaction_id || '',
+   'Status':         op.verification_status || 'unverified',
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
@@ -75,7 +90,6 @@ function OperationsPage() {
  };
 
  const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
-
  const sortArrow = (col) => sort.by === col ? (sort.dir === 'ASC' ? ' ↑' : ' ↓') : '';
 
  const formatAmount = (op) => {
@@ -138,6 +152,7 @@ function OperationsPage() {
         { label: 'Saldo dostępne',  col: null,            cls: 'number' },
         { label: 'Saldo całkowite', col: 'balance_total', cls: 'number' },
         { label: 'Transakcja',      col: null },
+        { label: '',                col: null,            cls: 'col-verify' },
        ].map(({ label, col, cls }) => (
         <th key={label}
          className={[cls, col ? 'sortable' : ''].filter(Boolean).join(' ')}
@@ -150,11 +165,11 @@ function OperationsPage() {
      </thead>
      <tbody>
       {loading
-       ? <tr><td colSpan={6} className="loading">Ładowanie...</td></tr>
+       ? <tr><td colSpan={7} className="loading">Ładowanie...</td></tr>
        : operations.length === 0
-        ? <tr><td colSpan={6} className="no-data-row">Brak operacji</td></tr>
+        ? <tr><td colSpan={7} className="no-data-row">Brak operacji</td></tr>
         : operations.map(op => (
-         <tr key={op.id}>
+         <tr key={op.id} className={`verify-${op.verification_status || 'unverified'}`}>
           <td className="datetime">{op.datetime}</td>
           <td className="op-type">{op.operation_type}</td>
           <td className="number">{formatAmount(op)}</td>
@@ -164,6 +179,15 @@ function OperationsPage() {
            {op.transaction_id
             ? <span className="tx-badge" title={op.transaction_id}>✓ powiązana</span>
             : <span className="no-data">—</span>}
+          </td>
+          <td className="col-verify">
+           <button
+            className={`btn-verify status-${op.verification_status || 'unverified'}`}
+            onClick={() => handleVerify(op)}
+            title={VERIFY_TITLES[op.verification_status || 'unverified']}
+           >
+            {VERIFY_LABELS[op.verification_status || 'unverified']}
+           </button>
           </td>
          </tr>
         ))

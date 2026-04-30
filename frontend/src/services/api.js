@@ -105,6 +105,12 @@ export const getYears = async () => {
  return response.data;
 };
 
+// Analiza zysków/strat metodą uproszczoną (per rok)
+export const getSimpleProfit = async () => {
+ const response = await axios.get(`${API_BASE_URL}/simple-profit.php`);
+ return response.data;
+};
+
 // Pobieranie operacji
 export const getOperations = async (params = {}) => {
  const queryString = new URLSearchParams(params).toString();
@@ -115,6 +121,12 @@ export const getOperations = async (params = {}) => {
 // Zmiana statusu weryfikacji transakcji
 export const setVerificationStatus = async (id, status) => {
  const response = await axios.patch(`${API_BASE_URL}/transactions/verify.php`, { id, status });
+ return response.data;
+};
+
+// Zmiana statusu weryfikacji operacji
+export const setOperationVerificationStatus = async (id, status) => {
+ const response = await axios.patch(`${API_BASE_URL}/operations/verify.php`, { id, status });
  return response.data;
 };
 

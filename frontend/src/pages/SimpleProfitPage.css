@@ -1,0 +1,130 @@
+.sp-page {
+ padding: 1.5rem;
+}
+
+.sp-header {
+ margin-bottom: 1.5rem;
+}
+
+.sp-header h2 {
+ font-size: 1.75rem;
+ color: #333;
+ font-weight: 600;
+ margin: 0 0 0.25rem;
+}
+
+.sp-subtitle {
+ color: #666;
+ font-size: 0.9rem;
+ margin: 0;
+}
+
+.sp-loading {
+ text-align: center;
+ color: #999;
+ padding: 3rem;
+}
+
+.sp-table-wrap {
+ background: white;
+ border-radius: 8px;
+ box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+ overflow: hidden;
+ margin-bottom: 1.5rem;
+}
+
+.sp-table {
+ width: 100%;
+ border-collapse: collapse;
+ font-size: 0.9rem;
+}
+
+.sp-table th {
+ background: #f8f9fa;
+ padding: 0.75rem 1rem;
+ text-align: left;
+ font-size: 0.75rem;
+ font-weight: 600;
+ color: #555;
+ text-transform: uppercase;
+ border-bottom: 2px solid #eee;
+}
+
+.sp-table th.num,
+.sp-table td.num {
+ text-align: right;
+}
+
+.sp-year-row {
+ cursor: pointer;
+ border-bottom: 1px solid #eee;
+ font-weight: 600;
+}
+
+.sp-year-row:hover td {
+ background: #f5f5f5;
+}
+
+.sp-year-row.open td {
+ background: #f0f4ff;
+}
+
+.sp-year-row td {
+ padding: 0.75rem 1rem;
+}
+
+.sp-year-cell {
+ display: flex;
+ align-items: center;
+ gap: 0.4rem;
+}
+
+.sp-toggle {
+ font-size: 0.75rem;
+ color: #888;
+ width: 12px;
+ display: inline-block;
+}
+
+.sp-crypto-row td {
+ padding: 0.45rem 1rem 0.45rem 2.5rem;
+ font-size: 0.85rem;
+ color: #444;
+ background: #fafbff;
+ border-bottom: 1px solid #f0f0f0;
+}
+
+.sp-crypto-row:last-of-type td {
+ border-bottom: 2px solid #eee;
+}
+
+.sp-crypto-name {
+ color: #555;
+ font-weight: 500;
+}
+
+.sp-profit.pos { color: #2e7d32; font-weight: 700; }
+.sp-profit.neg { color: #c62828; font-weight: 700; }
+
+.sp-cumulative.pos { color: #1565c0; font-weight: 700; }
+.sp-cumulative.neg { color: #ad1457; font-weight: 700; }
+
+.sp-cumulative-empty { color: #ccc; }
+
+.sp-total-row td {
+ padding: 0.75rem 1rem;
+ font-weight: 700;
+ font-size: 0.95rem;
+ background: #f8f9fa;
+ border-top: 2px solid #ddd;
+}
+
+.sp-note {
+ background: #fffde7;
+ border: 1px solid #f9a825;
+ border-radius: 6px;
+ padding: 0.75rem 1rem;
+ font-size: 0.82rem;
+ color: #5d4037;
+ line-height: 1.5;
+}

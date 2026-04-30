@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getTransactionSummary, setVerificationStatus } from '../services/api';
 import * as XLSX from 'xlsx';
 import './TransactionsPage.css';
@@ -110,34 +110,59 @@ function TransactionsPage({ selectedMarket }) {
     offset: 0
    };
    const data = await getTransactions(params);
-   const rows = (data.transactions || []).map(tx => ({
-    'Data':            tx.datetime,
-    'Rynek':           tx.market,
-    'Rodzaj':          tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
-    'Typ':             tx.order_type,
-    'Kurs':            parseFloat(tx.rate),
-    'Ilość':           parseFloat(tx.amount),
-    'Wartość':         parseFloat(tx.value),
-    'Prowizja PLN':    tx.fee_pln || 0,
-    'Prowizja krypto': tx.fee_crypto || 0,
-    'Waluta prowizji': tx.fee_crypto_currency || '',
-    'Netto':           tx.net_received != null ? parseFloat(tx.net_received) : '',
-    'Waluta netto':    tx.net_received_currency || '',
-    'Saldo po':        tx.balance_after != null ? parseFloat(tx.balance_after) : '',
-    'Waluta salda':    tx.balance_after_currency || '',
-   }));
-
-   const ws = XLSX.utils.json_to_sheet(rows);
-   const wb = XLSX.utils.book_new();
-   XLSX.utils.book_append_sheet(wb, ws, 'Transakcje');
-
    const filename = `transakcje_${selectedMarket || 'wszystkie'}_${new Date().toISOString().slice(0,10)}`;
+
    if (format === 'xlsx') {
+    const rows = (data.transactions || []).map(tx => ({
+     'Data':            tx.datetime,
+     'Rynek':           tx.market,
+     'Rodzaj':          tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
+     'Typ':             tx.order_type,
+     'Kurs':            parseFloat(tx.rate),
+     'Ilość':           parseFloat(tx.amount),
+     'Wartość':         parseFloat(tx.value),
+     'Prowizja PLN':    parseFloat(tx.fee_pln || 0),
+     'Prowizja krypto': parseFloat(tx.fee_crypto || 0),
+     'Waluta prowizji': tx.fee_crypto_currency || '',
+     'Netto':           tx.net_received != null ? parseFloat(tx.net_received) : '',
+     'Waluta netto':    tx.net_received_currency || '',
+     'Saldo po':        tx.balance_after != null ? parseFloat(tx.balance_after) : '',
+     'Waluta salda':    tx.balance_after_currency || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const colFmt = { 4:'0.00', 5:'0.00000000', 6:'0.00', 7:'0.00', 8:'0.00000000', 10:'0.00000000', 12:'0.00000000' };
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+     Object.entries(colFmt).forEach(([C, fmt]) => {
+      const addr = XLSX.utils.encode_cell({ r: R, c: Number(C) });
+      if (ws[addr]) ws[addr].z = fmt;
+     });
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transakcje');
     XLSX.writeFile(wb, `${filename}.xlsx`);
    } else {
-    // UTF-8 BOM zapewnia poprawne polskie znaki w Excel
+    const fmt8 = v => (v != null && v !== '') ? parseFloat(v).toFixed(8) : '';
+    const fmt2 = v => (v != null && v !== '') ? parseFloat(v).toFixed(2) : '';
+    const rows = (data.transactions || []).map(tx => ({
+     'Data':            tx.datetime,
+     'Rynek':           tx.market,
+     'Rodzaj':          tx.type === 'buy' ? 'Kupno' : 'Sprzedaż',
+     'Typ':             tx.order_type,
+     'Kurs':            fmt2(tx.rate),
+     'Ilość':           fmt8(tx.amount),
+     'Wartość':         fmt2(tx.value),
+     'Prowizja PLN':    fmt2(tx.fee_pln || 0),
+     'Prowizja krypto': fmt8(tx.fee_crypto || 0),
+     'Waluta prowizji': tx.fee_crypto_currency || '',
+     'Netto':           tx.net_received != null ? fmt8(tx.net_received) : '',
+     'Waluta netto':    tx.net_received_currency || '',
+     'Saldo po':        tx.balance_after != null ? fmt8(tx.balance_after) : '',
+     'Waluta salda':    tx.balance_after_currency || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
     const csv = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -168,10 +193,16 @@ function TransactionsPage({ selectedMarket }) {
   }
  };
 
- // Wyciągnij crypto z rynku (np. BTC-PLN -> BTC)
+ // Wyciągnij crypto z rynku (np. BTC-PLN -> BTC, LTC-USDT -> LTC)
  const getCryptoFromMarket = (market) => {
   if (!market || !market.includes('-')) return 'CRYPTO';
   return market.split('-')[0];
+ };
+
+ // Wyciągnij walutę kwotowania z rynku (np. BTC-PLN -> PLN, LTC-USDT -> USDT, XIN-BTC -> BTC)
+ const getQuoteFromMarket = (market) => {
+  if (!market || !market.includes('-')) return 'PLN';
+  return market.split('-')[1];
  };
 
  // Formatowanie prowizji do wyświetlenia
@@ -226,20 +257,23 @@ function TransactionsPage({ selectedMarket }) {
   setCurrentTransaction(transaction);
 
   // Określ walutę prowizji na podstawie istniejących danych
+  const base  = getCryptoFromMarket(transaction.market);
   let feeCurrency = 'crypto';
   let feeAmount = '';
 
   if (transaction.fee_pln > 0) {
-   feeCurrency = 'PLN';
+   // fee_pln oznacza PLN, a PLN to waluta kwotowania dla par xxx-PLN
+   feeCurrency = 'quote';
    feeAmount = parseFloat(transaction.fee_pln).toFixed(2);
   } else if (transaction.fee_crypto > 0) {
-   feeCurrency = 'crypto';
+   // fee_crypto może być walutą bazową (np. LTC) lub kwotowania (np. USDT)
+   feeCurrency = (transaction.fee_crypto_currency === base) ? 'crypto' : 'quote';
    feeAmount = parseFloat(transaction.fee_crypto).toFixed(8);
   } else if (transaction.has_real_fee && transaction.fees.length > 0) {
    // Prowizja zapisana jako 0
    const zeroFee = transaction.fees[0];
-   feeCurrency = zeroFee.currency === 'PLN' ? 'PLN' : 'crypto';
-   feeAmount = zeroFee.currency === 'PLN' ? '0.00' : '0.00000000';
+   feeCurrency = zeroFee.currency === base ? 'crypto' : 'quote';
+   feeAmount = zeroFee.currency === base ? '0.00000000' : '0.00';
   }
 
   setFormData({
@@ -286,7 +320,7 @@ function TransactionsPage({ selectedMarket }) {
   if (name === 'type') {
    setFormData(prev => ({
     ...prev,
-    fee_currency: value === 'buy' ? 'crypto' : 'PLN'
+    fee_currency: value === 'buy' ? 'crypto' : 'quote'
    }));
   }
  };
@@ -302,7 +336,7 @@ function TransactionsPage({ selectedMarket }) {
     fee_amount: formData.fee_amount !== '' ? parseFloat(String(formData.fee_amount).replace(',', '.')) : null,
     fee_currency: formData.fee_currency === 'crypto'
      ? getCryptoFromMarket(formData.market)
-     : 'PLN'
+     : getQuoteFromMarket(formData.market)
    };
 
    if (modalMode === 'create') {
@@ -538,96 +572,121 @@ function TransactionsPage({ selectedMarket }) {
    </div>
 
    {/* Podsumowanie */}
-   {summary && (summary.summary.buy || summary.summary.sell) && (
+   {summary && (
     <div className="tx-summary">
      <div className="tx-summary-title">Podsumowanie okresu</div>
      <div className="tx-summary-grid">
 
-      {summary.summary.buy && (
-       <div className="tx-summary-card buy">
-        <div className="tx-summary-card-label">Kupno</div>
-        <div className="tx-summary-card-row">
-         <span>Liczba transakcji</span>
-         <strong>{summary.summary.buy.count}</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Łącznie kupiono</span>
-         <strong>{parseFloat(summary.summary.buy.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })}</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Zapłacono łącznie</span>
-         <strong>{parseFloat(summary.summary.buy.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Średni kurs kupna</span>
-         <strong>{parseFloat(summary.summary.buy.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
-        </div>
-       </div>
-      )}
-
-      {summary.summary.sell && (
-       <div className="tx-summary-card sell">
-        <div className="tx-summary-card-label">Sprzedaż</div>
-        <div className="tx-summary-card-row">
-         <span>Liczba transakcji</span>
-         <strong>{summary.summary.sell.count}</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Łącznie sprzedano</span>
-         <strong>{parseFloat(summary.summary.sell.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })}</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Otrzymano łącznie</span>
-         <strong>{parseFloat(summary.summary.sell.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
-        </div>
-        <div className="tx-summary-card-row">
-         <span>Średni kurs sprzedaży</span>
-         <strong>{parseFloat(summary.summary.sell.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
-        </div>
-       </div>
-      )}
-
-      <div className={`tx-summary-card balance ${summary.balance >= 0 ? 'profit' : 'loss'}`}>
-       <div className="tx-summary-card-label">Bilans okresu</div>
-       <div className="tx-summary-balance-value">
-        {summary.balance >= 0 ? '▲' : '▼'}{' '}
-        {Math.abs(summary.balance).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
-       </div>
-       <div className="tx-summary-balance-desc">
-        {summary.balance >= 0
-         ? 'Wpływy ze sprzedaży przewyższają koszty kupna'
-         : 'Koszty kupna przewyższają wpływy ze sprzedaży'}
-       </div>
-       {(() => {
-        const boughtAmt = summary.summary.buy?.total_amount  || 0;
-        const soldAmt   = summary.summary.sell?.total_amount || 0;
-        const remaining = boughtAmt - soldAmt;
-        if (summary.balance < 0 && remaining > 0.000000001) {
-         const breakEven = Math.abs(summary.balance) / remaining;
-         const crypto = selectedMarket ? selectedMarket.split('-')[0] : 'krypto';
-         return (
-          <div className="tx-summary-breakeven">
-           <div className="tx-summary-breakeven-label">Próg rentowności</div>
-           <div className="tx-summary-breakeven-value">
-            {breakEven.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN
-           </div>
-           <div className="tx-summary-breakeven-desc">
-            Sprzedaj pozostałe{' '}
-            {remaining.toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} {crypto}{' '}
-            po tym kursie, aby wyjść na zero w tym okresie
-           </div>
+      {(() => {
+       const sym = selectedMarket ? selectedMarket.split('-')[0] : 'krypto';
+       const buy  = summary.summary.buy  ?? { count: 0, total_amount: 0, total_value: 0, avg_rate: 0, fee_pln: 0, fee_crypto: 0, net_amount: 0 };
+       const sell = summary.summary.sell ?? { count: 0, total_amount: 0, total_value: 0, avg_rate: 0, fee_pln: 0, fee_crypto: 0, net_amount: 0 };
+       return (
+        <>
+          <div className="tx-summary-card buy">
+          <div className="tx-summary-card-label">Kupno</div>
+          <div className="tx-summary-card-row">
+           <span>Liczba transakcji</span>
+           <strong>{buy.count}</strong>
           </div>
-         );
-        }
-        if (summary.balance < 0 && remaining <= 0.000000001) {
-         return <div className="tx-summary-balance-note">Brak pozostałego krypto — strata zrealizowana</div>;
-        }
-        return null;
-       })()}
-       <div className="tx-summary-balance-note">
-        * Bilans kasowy okresu — zmień zakres dat lub wybierz krypto z menu
-       </div>
-      </div>
+          <div className="tx-summary-card-row">
+           <span>Łącznie kupiono</span>
+           <strong>{parseFloat(buy.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })} {sym}</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Zapłacono łącznie</span>
+           <strong>{parseFloat(buy.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Prowizja (PLN)</span>
+           <strong>{(+(buy.fee_pln ?? 0)).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Prowizja ({sym})</span>
+           <strong>{(+(buy.fee_crypto ?? 0)).toLocaleString('pl-PL', { minimumFractionDigits: 8 })} {sym}</strong>
+          </div>
+          <div className="tx-summary-card-row tx-summary-card-row--highlight">
+           <span>Otrzymano netto ({sym})</span>
+           <strong>{(+(buy.net_amount ?? buy.total_amount)).toLocaleString('pl-PL', { minimumFractionDigits: 8 })} {sym}</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Średni kurs kupna</span>
+           <strong>{parseFloat(buy.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+         </div>
+
+         <div className="tx-summary-card sell">
+          <div className="tx-summary-card-label">Sprzedaż</div>
+          <div className="tx-summary-card-row">
+           <span>Liczba transakcji</span>
+           <strong>{sell.count}</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Łącznie sprzedano</span>
+           <strong>{parseFloat(sell.total_amount).toLocaleString('pl-PL', { minimumFractionDigits: 8 })} {sym}</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Otrzymano łącznie</span>
+           <strong>{parseFloat(sell.total_value).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Prowizja (PLN)</span>
+           <strong>{(+(sell.fee_pln ?? 0)).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Prowizja ({sym})</span>
+           <strong>{(+(sell.fee_crypto ?? 0)).toLocaleString('pl-PL', { minimumFractionDigits: 8 })} {sym}</strong>
+          </div>
+          <div className="tx-summary-card-row tx-summary-card-row--highlight">
+           <span>Otrzymano netto (PLN)</span>
+           <strong>{(+(sell.net_amount ?? sell.total_value)).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+          <div className="tx-summary-card-row">
+           <span>Średni kurs sprzedaży</span>
+           <strong>{parseFloat(sell.avg_rate).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</strong>
+          </div>
+         </div>
+
+         <div className={`tx-summary-card balance ${summary.balance >= 0 ? 'profit' : 'loss'}`}>
+          <div className="tx-summary-card-label">Bilans okresu</div>
+          <div className="tx-summary-balance-value">
+           {summary.balance >= 0 ? '▲' : '▼'}{' '}
+           {Math.abs(summary.balance).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+          </div>
+          <div className="tx-summary-balance-desc">
+           {summary.balance >= 0
+            ? 'Wpływy ze sprzedaży przewyższają koszty kupna (z prowizjami)'
+            : 'Koszty kupna przewyższają wpływy ze sprzedaży (z prowizjami)'}
+          </div>
+          {summary.remaining_crypto > 0.000000001 && (
+           <div className="tx-summary-card-row">
+            <span>Pozostało {sym}</span>
+            <strong>{parseFloat(summary.remaining_crypto).toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} {sym}</strong>
+           </div>
+          )}
+          {summary.balance < 0 && summary.break_even && (
+           <div className="tx-summary-breakeven">
+            <div className="tx-summary-breakeven-label">Próg rentowności</div>
+            <div className="tx-summary-breakeven-value">
+             {parseFloat(summary.break_even).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN
+            </div>
+            <div className="tx-summary-breakeven-desc">
+             Sprzedaj pozostałe{' '}
+             {parseFloat(summary.remaining_crypto).toLocaleString('pl-PL', { minimumFractionDigits: 8, maximumFractionDigits: 8 })} {sym}{' '}
+             po tym kursie, aby wyjść na zero
+            </div>
+           </div>
+          )}
+          {summary.balance < 0 && !summary.break_even && (
+           <div className="tx-summary-balance-note">Brak pozostałego {sym} — strata zrealizowana</div>
+          )}
+          <div className="tx-summary-balance-note">
+           * Bilans uwzględnia prowizje — zmień zakres dat lub wybierz krypto z menu
+          </div>
+         </div>
+        </>
+       );
+      })()}
 
      </div>
     </div>
@@ -745,9 +804,11 @@ function TransactionsPage({ selectedMarket }) {
           <label>Waluta prowizji</label>
           <select name="fee_currency" value={formData.fee_currency} onChange={handleFormChange}>
            <option value="crypto">
-            {getCryptoFromMarket(formData.market) || 'Crypto'} (kryptowaluta)
+            {getCryptoFromMarket(formData.market) || 'Crypto'} (kryptowaluta bazowa)
            </option>
-           <option value="PLN">PLN (złotówki)</option>
+           <option value="quote">
+            {getQuoteFromMarket(formData.market)} (waluta kwotowania)
+           </option>
           </select>
          </div>
         </div>
@@ -755,7 +816,7 @@ function TransactionsPage({ selectedMarket }) {
          💡 Na Zonda prowizja jest pobierana w walucie którą otrzymujesz:
          {formData.type === 'buy'
           ? ` przy kupnie w ${getCryptoFromMarket(formData.market) || 'crypto'}`
-          : ' przy sprzedaży w PLN'}
+          : ` przy sprzedaży w ${getQuoteFromMarket(formData.market)}`}
         </p>
        </div>
 

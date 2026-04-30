@@ -6,6 +6,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import DashboardPage from './pages/DashboardPage';
 import StatisticsPage from './pages/StatisticsPage';
 import ProfitAnalysisPage from './pages/ProfitAnalysisPage';
+import SimpleProfitPage from './pages/SimpleProfitPage';
 import OperationsPage from './pages/OperationsPage';
 import { getMarkets } from './services/api';
 
@@ -82,7 +83,8 @@ function AppLayout() {
             <NavLink to="/transactions">Transakcje</NavLink>
             <NavLink to="/operations">Operacje</NavLink>
             <NavLink to="/statistics">Statystyki</NavLink>
-            <NavLink to="/profit-analysis">Zyski / Straty</NavLink>
+            <NavLink to="/profit-analysis">Zyski / Straty FIFO</NavLink>
+            <NavLink to="/simple-profit">Zyski / Straty</NavLink>
           </ul>
         </div>
       </nav>
@@ -96,6 +98,7 @@ function AppLayout() {
             <Route path="/transactions" element={<TransactionsPage selectedMarket={selectedMarket} />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/profit-analysis" element={<ProfitAnalysisPage />} />
+            <Route path="/simple-profit" element={<SimpleProfitPage />} />
             <Route path="/operations" element={<OperationsPage />} />
           </Routes>
         </main>

@@ -505,6 +505,23 @@ tr.verify-unverified { background: transparent; }
  border-bottom: none;
 }
 
+.tx-summary-card-row--highlight {
+ margin-top: 0.25rem;
+ padding-top: 0.35rem;
+ border-top: 1px solid rgba(0,0,0,0.12);
+ border-bottom: none;
+}
+
+.tx-summary-card-row--highlight span {
+ font-weight: 600;
+ color: #333;
+}
+
+.tx-summary-card-row--highlight strong {
+ font-size: 0.88rem;
+ font-weight: 700;
+}
+
 .tx-summary-card-row span {
  color: #666;
 }
